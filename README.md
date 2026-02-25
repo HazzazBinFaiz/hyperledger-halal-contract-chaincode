@@ -4,7 +4,7 @@
 
 ```
 git clone git@github.com:HazzazBinFaiz/hyperledger-halal-contract-chaincode.git halal-contract
-
+```
 ## Bring up the test network
 
 ```
