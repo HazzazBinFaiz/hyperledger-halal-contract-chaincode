@@ -58,7 +58,7 @@ class HalalTrackerContract extends Contract {
         }
 
         if (parseInt(age_of_chicken.toString()) < 0) {
-            throw new Error("Age of chicken must be 0 or positive");
+            throw new Error('Age of chicken must be 0 or positive');
         }
 
         const batch = {
@@ -68,13 +68,13 @@ class HalalTrackerContract extends Contract {
             age_of_chicken: parseInt(age_of_chicken.toString()),
             breed_type,
             ideal_temperature: parseFloat(ideal_temperature.toString()),
-            status: "CREATED",
+            status: 'CREATED',
         };
 
         await ctx.stub.putState(batchKey, Buffer.from(JSON.stringify(batch)));
 
         // Event: BatchCreated
-        ctx.stub.setEvent("BatchCreated", Buffer.from(JSON.stringify(batch)));
+        ctx.stub.setEvent('BatchCreated', Buffer.from(JSON.stringify(batch)));
 
         return batch;
     }
@@ -99,19 +99,19 @@ class HalalTrackerContract extends Contract {
         const batch = JSON.parse(batchBytes.toString());
 
         if (batch.owner !== caller) {
-            throw new Error("Only the batch owner (farmer) can dispatch this batch");
+            throw new Error('Only the batch owner (farmer) can dispatch this batch');
         }
 
-        if (batch.status === "DISPATCHED") {
-            throw new Error("Batch already dispatched");
+        if (batch.status === 'DISPATCHED') {
+            throw new Error('Batch already dispatched');
         }
 
         const dispatchedCount = parseInt(number_of_chicken_dispatched);
         if (dispatchedCount <= 0) {
-            throw new Error("Dispatched chicken count must be positive");
+            throw new Error('Dispatched chicken count must be positive');
         }
 
-        batch.status = "DISPATCHED";
+        batch.status = 'DISPATCHED';
         batch.dispatch_info = {
             number_of_chicken_dispatched: dispatchedCount,
             dispatch_date
@@ -120,7 +120,7 @@ class HalalTrackerContract extends Contract {
         await ctx.stub.putState(batchKey, Buffer.from(JSON.stringify(batch)));
 
         // Event: BatchDispatched
-        ctx.stub.setEvent("BatchDispatched", Buffer.from(JSON.stringify(batch)));
+        ctx.stub.setEvent('BatchDispatched', Buffer.from(JSON.stringify(batch)));
 
         return batch;
     }
@@ -184,8 +184,8 @@ class HalalTrackerContract extends Contract {
 
         const batch = JSON.parse(batchBytes.toString());
 
-        if (batch.status !== "DISPATCHED") {
-            throw new Error("Batch must be dispatched before transport can accept it");
+        if (batch.status !== 'DISPATCHED') {
+            throw new Error('Batch must be dispatched before transport can accept it');
         }
 
         const transport = {
@@ -197,7 +197,7 @@ class HalalTrackerContract extends Contract {
             vehicle_type,
             acceptance_time: parseInt(acceptance_time),
             acceptedBy: ctx.clientIdentity.getID(),
-            status: "ACCEPTED",
+            status: 'ACCEPTED',
         };
 
         await ctx.stub.putState(transportKey, Buffer.from(JSON.stringify(transport)));
@@ -225,17 +225,17 @@ class HalalTrackerContract extends Contract {
         const transport = JSON.parse(transportBytes.toString());
 
         if (transport.batch_id !== parseInt(batch_id)) {
-            throw new Error("Batch ID mismatch for this transport record");
+            throw new Error('Batch ID mismatch for this transport record');
         }
 
-        if (transport.status !== "ACCEPTED") {
-            throw new Error("Transport must be ACCEPTED before starting");
+        if (transport.status !== 'ACCEPTED') {
+            throw new Error('Transport must be ACCEPTED before starting');
         }
 
         transport.source_location = source_location;
         transport.destination_location = destination_location;
         transport.start_timestamp = parseInt(start_timestamp);
-        transport.status = "IN_TRANSIT";
+        transport.status = 'IN_TRANSIT';
 
         await ctx.stub.putState(transportKey, Buffer.from(JSON.stringify(transport)));
 
@@ -265,18 +265,18 @@ class HalalTrackerContract extends Contract {
         const transport = JSON.parse(transportBytes.toString());
 
         if (transport.batch_id !== parseInt(batch_id)) {
-            throw new Error("Batch ID mismatch for this transport record");
+            throw new Error('Batch ID mismatch for this transport record');
         }
 
-        if (transport.status !== "IN_TRANSIT") {
-            throw new Error("Transport must be IN_TRANSIT before delivery");
+        if (transport.status !== 'IN_TRANSIT') {
+            throw new Error('Transport must be IN_TRANSIT before delivery');
         }
 
         transport.receiver_id = parseInt(receiver_id);
         transport.delivery_location = delivery_location;
         transport.delivery_time = parseInt(delivery_time);
         transport.delivery_status = delivery_status;
-        transport.status = "DELIVERED";
+        transport.status = 'DELIVERED';
 
         await ctx.stub.putState(transportKey, Buffer.from(JSON.stringify(transport)));
 
@@ -286,7 +286,7 @@ class HalalTrackerContract extends Contract {
 
         if (batchBytes && batchBytes.length > 0) {
             const batch = JSON.parse(batchBytes.toString());
-            batch.status = "DELIVERED";
+            batch.status = 'DELIVERED';
             await ctx.stub.putState(batchKey, Buffer.from(JSON.stringify(batch)));
         }
 
