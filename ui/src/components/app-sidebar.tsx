@@ -19,20 +19,24 @@ import {
 const data = {
   navMain: [
     {
-      title: "Getting Started",
+      title: "Interact With Contract",
       url: "#",
       items: [
         {
-          title: "Installation",
+          title: "Farm",
           url: "#",
         },
         {
-          title: "Project Structure",
+          title: "Slaughter House",
+          url: "#",
+        },
+        {
+          title: "Retail Shop",
           url: "#",
         },
       ],
     },
-    {
+    /*{
       title: "Build Your Application",
       url: "#",
       items: [
@@ -152,7 +156,7 @@ const data = {
           url: "#",
         },
       ],
-    },
+    },*/
   ],
 }
 
@@ -168,7 +172,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <GalleryVerticalEnd className="size-4" />
                 </div>
                 <div className="flex flex-col gap-0.5 leading-none">
-                  <span className="font-medium">Documentation</span>
+                  <span className="font-medium">{process.env.NEXT_PUBLIC_APP_NAME}</span>
                   <span className="">v1.0.0</span>
                 </div>
               </a>
