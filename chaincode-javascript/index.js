@@ -6,7 +6,7 @@
 
 'use strict';
 
-const PoultryContract = require('./lib/PoultryContract');
+const HalalTraceabilityContract = require('./lib/contract');
 
-module.exports.PoultryContract = PoultryContract;
-module.exports.contracts = [PoultryContract];
+module.exports.HalalTraceabilityContract = HalalTraceabilityContract;
+module.exports.contracts = [HalalTraceabilityContract];
