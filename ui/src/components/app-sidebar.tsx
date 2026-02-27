@@ -24,7 +24,7 @@ const data = {
       items: [
         {
           title: "Farm",
-          url: "#",
+          url: "farms",
         },
         {
           title: "Slaughter House",
