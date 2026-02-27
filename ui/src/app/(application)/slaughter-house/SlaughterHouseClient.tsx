@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { createFarm, listFarms, Farm } from "./action"
+import { createSlaughterHouses, listSlaughterHouses, SlaughterHouse } from "./action"
 import { useForm, useFieldArray } from "react-hook-form"
 import { z } from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -33,12 +33,12 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>
 
-export default function FarmsClient({
-    initialFarms,
+export default function SlaughterHouseClient({
+    initialSlaughterHouses,
 }: {
-    initialFarms: Farm[]
+    initialSlaughterHouses: SlaughterHouse[]
 }) {
-    const [farms, setFarms] = useState<Farm[]>(initialFarms)
+    const [slaughterHouses, setSlaughterHouses] = useState<SlaughterHouse[]>(initialSlaughterHouses)
     const [isPending, startTransition] = useTransition()
 
     const {
@@ -70,24 +70,24 @@ export default function FarmsClient({
 
         startTransition(async () => {
             try {
-                await createFarm({
+                await createSlaughterHouses({
                     name: data.name,
                     address: data.address,
                     additionalInfo: additionalObject,
                 })
 
-                const updated = await listFarms()
-                setFarms(updated)
+                const updated = await listSlaughterHouses()
+                setSlaughterHouses(updated)
 
                 reset()
 
-                toast("Farm Created", {
-                    description: "Farm added successfully",
+                toast("Slaughter House Created", {
+                    description: "Slaughter House added successfully",
                 })
 
             } catch {
                 toast("Error", {
-                    description: "Failed to create farm",
+                    description: "Failed to create slaughter house",
                 })
             }
         })
@@ -99,7 +99,7 @@ export default function FarmsClient({
             {/* ================= FORM CARD ================= */}
             <Card className="w-full mx-auto">
                 <CardHeader>
-                    <CardTitle>Create New Farm</CardTitle>
+                    <CardTitle>Create New Slaughter House</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleSubmit(onSubmit)} className="flex justify-center flex-wrap space-y-6">
@@ -158,7 +158,7 @@ export default function FarmsClient({
                             {isPending && (
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                             )}
-                            {isPending ? "Creating..." : "Create Farm"}
+                            {isPending ? "Creating..." : "Create Slaughter House"}
                         </Button>
 
                     </form>
@@ -169,35 +169,35 @@ export default function FarmsClient({
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Farms</CardTitle>
+                    <CardTitle>Slaughter Houses</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Farm ID</TableHead>
+                                <TableHead>Slaughter House ID</TableHead>
                                 <TableHead>Name</TableHead>
                                 <TableHead>Address</TableHead>
                                 <TableHead>Additional Info</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {farms.length === 0 ? (
+                            {slaughterHouses.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={4} className="text-center text-muted-foreground py-6">
-                                        No farm found
+                                        No slaugheter house found
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                farms.map(farm => (
-                                    <TableRow key={farm.id}>
-                                        <TableCell>{farm.id}</TableCell>
-                                        <TableCell>{farm.name}</TableCell>
-                                        <TableCell>{farm.address}</TableCell>
+                                slaughterHouses.map(slaughetrHouse => (
+                                    <TableRow key={slaughetrHouse.id}>
+                                        <TableCell>{slaughetrHouse.id}</TableCell>
+                                        <TableCell>{slaughetrHouse.name}</TableCell>
+                                        <TableCell>{slaughetrHouse.address}</TableCell>
                                         <TableCell>
                                             <div className="space-y-1 text-sm">
-                                                {Object.entries(farm.additionalInfo).length === 0 && "—"}
-                                                {Object.entries(farm.additionalInfo).map(([k, v]) => (
+                                                {Object.entries(slaughetrHouse.additionalInfo).length === 0 && "—"}
+                                                {Object.entries(slaughetrHouse.additionalInfo).map(([k, v]) => (
                                                     <div key={k}>
                                                         - <span className="font-medium">{k}</span> : {v}
                                                     </div>

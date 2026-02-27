@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { createFarm, listFarms, Farm } from "./action"
+import { createRetailShop, listRetailShop, RetailShop } from "./action"
 import { useForm, useFieldArray } from "react-hook-form"
 import { z } from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -33,12 +33,12 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>
 
-export default function FarmsClient({
-    initialFarms,
+export default function RetailShopClient({
+    initialRetailShops,
 }: {
-    initialFarms: Farm[]
+    initialRetailShops: RetailShop[]
 }) {
-    const [farms, setFarms] = useState<Farm[]>(initialFarms)
+    const [retailShops, setRetailShops] = useState<RetailShop[]>(initialRetailShops)
     const [isPending, startTransition] = useTransition()
 
     const {
@@ -70,24 +70,24 @@ export default function FarmsClient({
 
         startTransition(async () => {
             try {
-                await createFarm({
+                await createRetailShop({
                     name: data.name,
                     address: data.address,
                     additionalInfo: additionalObject,
                 })
 
-                const updated = await listFarms()
-                setFarms(updated)
+                const updated = await listRetailShop()
+                setRetailShops(updated)
 
                 reset()
 
-                toast("Farm Created", {
-                    description: "Farm added successfully",
+                toast("Retail Shop Created", {
+                    description: "Retail Shop created successfully",
                 })
 
             } catch {
                 toast("Error", {
-                    description: "Failed to create farm",
+                    description: "Failed to create retail shop",
                 })
             }
         })
@@ -99,7 +99,7 @@ export default function FarmsClient({
             {/* ================= FORM CARD ================= */}
             <Card className="w-full mx-auto">
                 <CardHeader>
-                    <CardTitle>Create New Farm</CardTitle>
+                    <CardTitle>Create New Retail Shop</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleSubmit(onSubmit)} className="flex justify-center flex-wrap space-y-6">
@@ -158,7 +158,7 @@ export default function FarmsClient({
                             {isPending && (
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                             )}
-                            {isPending ? "Creating..." : "Create Farm"}
+                            {isPending ? "Creating..." : "Create Retail Shop"}
                         </Button>
 
                     </form>
@@ -169,35 +169,35 @@ export default function FarmsClient({
 
             <Card>
                 <CardHeader>
-                    <CardTitle>Farms</CardTitle>
+                    <CardTitle>Retail Shops</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Farm ID</TableHead>
+                                <TableHead>Retail Shop ID</TableHead>
                                 <TableHead>Name</TableHead>
                                 <TableHead>Address</TableHead>
                                 <TableHead>Additional Info</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {farms.length === 0 ? (
+                            {retailShops.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={4} className="text-center text-muted-foreground py-6">
-                                        No farm found
+                                        No retail shop found
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                farms.map(farm => (
-                                    <TableRow key={farm.id}>
-                                        <TableCell>{farm.id}</TableCell>
-                                        <TableCell>{farm.name}</TableCell>
-                                        <TableCell>{farm.address}</TableCell>
+                                retailShops.map(retailShop => (
+                                    <TableRow key={retailShop.id}>
+                                        <TableCell>{retailShop.id}</TableCell>
+                                        <TableCell>{retailShop.name}</TableCell>
+                                        <TableCell>{retailShop.address}</TableCell>
                                         <TableCell>
                                             <div className="space-y-1 text-sm">
-                                                {Object.entries(farm.additionalInfo).length === 0 && "—"}
-                                                {Object.entries(farm.additionalInfo).map(([k, v]) => (
+                                                {Object.entries(retailShop.additionalInfo).length === 0 && "—"}
+                                                {Object.entries(retailShop.additionalInfo).map(([k, v]) => (
                                                     <div key={k}>
                                                         - <span className="font-medium">{k}</span> : {v}
                                                     </div>

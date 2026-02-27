@@ -28,11 +28,11 @@ const data = {
         },
         {
           title: "Slaughter House",
-          url: "#",
+          url: "slaughter-house",
         },
         {
           title: "Retail Shop",
-          url: "#",
+          url: "retail-shop",
         },
       ],
     },
