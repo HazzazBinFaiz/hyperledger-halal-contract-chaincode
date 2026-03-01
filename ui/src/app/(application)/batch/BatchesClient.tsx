@@ -34,7 +34,6 @@ import { toast } from "sonner"
 
 const schema = z.object({
     farm_id: z.coerce.number().min(1, "Farm is required"),
-    add_date: z.string().min(1),
     age_of_chicken: z.coerce.number(),
     breed_type: z.string().min(1),
     ideal_temperature: z.coerce.number(),
@@ -69,7 +68,6 @@ export default function BatchesClient({
         resolver: zodResolver(schema),
         defaultValues: {
             farm_id: 0,
-            add_date: "",
             age_of_chicken: 0,
             breed_type: "",
             ideal_temperature: 0,
@@ -98,6 +96,7 @@ export default function BatchesClient({
             try {
                 await createPoultryBatch({
                     ...data,
+                    add_date: new Date().toISOString(),
                     extra_info: extraObject,
                 })
 
@@ -157,11 +156,6 @@ export default function BatchesClient({
                                         {errors.farm_id.message}
                                     </p>
                                 )}
-                            </div>
-
-                            <div>
-                                <Label>Add Date</Label>
-                                <Input type="date" className="mt-2" {...register("add_date")} />
                             </div>
 
                             <div>

@@ -172,21 +172,20 @@ class HalalTraceabilityContract extends Contract {
     async getAllBatches(ctx) {
         return await this._getByPartial(ctx, 'Batch');
     }
-    
+
     async getBatchesByFarm(ctx, farm_id) {
         const all = await this._getByPartial(ctx, 'Batch');
         return all.filter(b => b.farm_id === +farm_id);
     }
 
-    async dispatchBatchToTransport(ctx, batch_id, dispatch_time, number_of_chicken, room_temperature, dispatch_date, extra_info) {
+    async dispatchBatchToTransport(ctx, batch_id, dispatch_time, number_of_chicken, room_temperature, extra_info) {
         const batch = await this.getBatchById(ctx, batch_id);
         this._assert(batch.status === BATCH_STATUS.CREATED, 'Invalid state');
 
         batch.status = BATCH_STATUS.WAITING_FOR_TRANSPORT;
-        batch.number_of_chicken = +number_of_chicken;
 
         await this._putState(ctx, this._batchKey(ctx, batch_id), batch);
-        await this._addTrace(ctx, batch_id, null, 0, 'dispatch_to_transport', JSON.parse(extra_info || '{}'));
+        await this._addTrace(ctx, batch_id, null, 0, `Dispatched to transport at ${dispatch_time} with ${number_of_chicken} and current temp : ${room_temperature}`, JSON.parse(extra_info || '{}'));
     }
 
     async acceptBatchForTransport(ctx, batch_id, acceptance_time, number_of_chicken, extra_info) {
