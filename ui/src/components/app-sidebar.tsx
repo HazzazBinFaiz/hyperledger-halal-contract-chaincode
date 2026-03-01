@@ -48,8 +48,24 @@ const data = {
                   title: "Dispatch",
                   url: "/batch/move/dispatch",
               },
+              {
+                  title: "Accept Transport",
+                  url: "/batch/move/accept-transport",
+              },
+              {
+                  title: "Deliver",
+                  url: "/batch/move/deliver",
+              },
+              {
+                  title: "Accept Slaughter",
+                  url: "/batch/move/accept-slaughter",
+              },
+              {
+                  title: "Process",
+                  url: "/batch/move/process",
+              },
           ],
-      },
+      }
     /*{
       title: "Build Your Application",
       url: "#",

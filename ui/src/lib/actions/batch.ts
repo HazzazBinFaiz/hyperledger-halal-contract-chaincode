@@ -2,7 +2,6 @@
 
 import {TextDecoder} from "node:util";
 import {getContract} from "@/lib/gateway";
-import {Farm} from "@/lib/actions/farm";
 
 export type PoultryBatch = {
   id: number
@@ -18,31 +17,17 @@ export type PoultryBatch = {
   extra_info: Record<string, string>
 }
 
-let batches: PoultryBatch[] = []
 const utf8Decoder = new TextDecoder()
 const contract = await getContract();
 
 export async function getAllBatches(): Promise<PoultryBatch[]> {
     const resultBytes = await contract.evaluateTransaction('getAllBatches');
-    const result = JSON.parse(utf8Decoder.decode(resultBytes)) as PoultryBatch[];
-    batches = result;
-    return result
+    return JSON.parse(utf8Decoder.decode(resultBytes)) as PoultryBatch[]
 }
 
 export async function getAllBatchesByStatus(status: string): Promise<PoultryBatch[]> {
     const resultBytes = await contract.evaluateTransaction('getBatchesByStatus', status);
     return JSON.parse(utf8Decoder.decode(resultBytes)) as PoultryBatch[];
-}
-
-export async function dispatchBatchToTransport(batch_id, dispatch_time, number_of_chicken, room_temperature, extra_info) {
-    await contract.submitTransaction(
-        'dispatchBatchToTransport',
-        batch_id.toString(),
-        dispatch_time.toString(),
-        number_of_chicken.toString(),
-        room_temperature.toString(),
-        JSON.stringify(extra_info),
-    )
 }
 
 export async function createPoultryBatch(data: {
@@ -53,7 +38,8 @@ export async function createPoultryBatch(data: {
   ideal_temperature: number
   extra_info: Record<string, string>
 }) {
-    const maxId = batches.length ? Math.max(...batches.map(f => f.id)) : 0;
+    const result = await getAllBatches()
+    const maxId = result.length ? Math.max(...result.map(b => b.id)) : 0
 
   const batch: PoultryBatch = {
     id: maxId + 1,
@@ -80,4 +66,103 @@ export async function createPoultryBatch(data: {
         JSON.stringify(data.extra_info),
     )
   return batch
+}
+
+export async function dispatchBatchToTransport(batch_id, dispatch_time, number_of_chicken, room_temperature, extra_info) {
+    await contract.submitTransaction(
+        'dispatchBatchToTransport',
+        batch_id.toString(),
+        dispatch_time.toString(),
+        number_of_chicken.toString(),
+        room_temperature.toString(),
+        JSON.stringify(extra_info),
+    )
+}
+
+export async function acceptBatchForTransport(
+    batch_id: number,
+    acceptance_time: string,
+    number_of_chicken: number,
+    extra_info: Record<string, string>
+) {
+    await contract.submitTransaction(
+        'acceptBatchForTransport',
+        batch_id.toString(),
+        acceptance_time,
+        number_of_chicken.toString(),
+        JSON.stringify(extra_info)
+    )
+}
+
+export async function deliverBatch(
+    batch_id: number,
+    slaughter_house_id: number,
+    delivery_time: string,
+    number_of_chicken: number,
+    extra_info: Record<string, string>
+) {
+    await contract.submitTransaction(
+        'deliverBatch',
+        batch_id.toString(),
+        slaughter_house_id.toString(),
+        delivery_time,
+        number_of_chicken.toString(),
+        JSON.stringify(extra_info)
+    )
+}
+
+export async function acceptBatchForSlaughtering(
+    batch_id: number,
+    slaughter_house_id: number,
+    acceptance_time: string,
+    number_of_chicken: number,
+    extra_info: Record<string, string>
+) {
+    await contract.submitTransaction(
+        'acceptBatchForSlaughtering',
+        batch_id.toString(),
+        slaughter_house_id.toString(),
+        acceptance_time,
+        number_of_chicken.toString(),
+        JSON.stringify(extra_info)
+    )
+}
+
+export async function createProcessedBatch(
+    batch_id: number,
+    number_of_split_batches: number,
+    extra_info: Record<string, string>
+) {
+    await contract.submitTransaction(
+        'createProcessedBatch',
+        batch_id.toString(),
+        number_of_split_batches.toString(),
+        JSON.stringify(extra_info)
+    )
+}
+
+export async function rejectBatch(
+    batch_id: number,
+    reason: string,
+    actor_id: number
+) {
+    await contract.submitTransaction(
+        'rejectBatch',
+        batch_id.toString(),
+        reason,
+        actor_id.toString()
+    )
+}
+
+export async function recallBatch(
+    batch_id: number,
+    reason: string,
+    authority_id: number
+) {
+    await contract.submitTransaction(
+        'recallBatch',
+        batch_id.toString(),
+        reason,
+        authority_id.toString()
+    )
 }

@@ -1,6 +1,7 @@
 'use strict';
 
 const { Contract } = require('fabric-contract-api');
+
 const BATCH_STATUS = Object.freeze({
     CREATED: 'CREATED',
     WAITING_FOR_TRANSPORT: 'WAITING_FOR_TRANSPORT',
@@ -51,9 +52,7 @@ class HalalTraceabilityContract extends Contract {
 
     async _getState(ctx, key) {
         const data = await ctx.stub.getState(key);
-        if (!data || data.length === 0) {
-            return null;
-        }
+        if (!data || data.length === 0) return null;
         return JSON.parse(data.toString());
     }
 
@@ -76,20 +75,13 @@ class HalalTraceabilityContract extends Contract {
     }
 
     _assert(condition, message) {
-        if (!condition) {
-            throw new Error(message);
-        }
+        if (!condition) throw new Error(message);
     }
-
-    // ============================================================
-    // ORGANIZATION ENTITIES
-    // ============================================================
 
     async createFarmer(ctx, id, name, address, extra_info) {
         const key = ctx.stub.createCompositeKey('Farmer', [id.toString()]);
         const exists = await ctx.stub.getState(key);
         this._assert(!exists || exists.length === 0, 'Farmer exists');
-
         const obj = { id: +id, name, address, extra_info: JSON.parse(extra_info || '{}') };
         await this._putState(ctx, key, obj);
         return obj;
@@ -133,10 +125,6 @@ class HalalTraceabilityContract extends Contract {
         return this._getByPartial(ctx, 'RetailShop');
     }
 
-    // ============================================================
-    // BATCH (PRE-SLAUGHTER)
-    // ============================================================
-
     async createPoultryBatch(ctx, id, farm_id, add_date, age_of_chicken, breed_type, ideal_temperature, extra_info) {
         const key = this._batchKey(ctx, id);
         const exists = await ctx.stub.getState(key);
@@ -157,6 +145,7 @@ class HalalTraceabilityContract extends Contract {
         };
 
         await this._putState(ctx, key, batch);
+        await this._addTrace(ctx, id, null, 0, `Batch ${id} created at farm ${farm_id}`, batch.extra_info);
         return batch;
     }
 
@@ -164,13 +153,13 @@ class HalalTraceabilityContract extends Contract {
         return this._getState(ctx, this._batchKey(ctx, id));
     }
 
+    async getAllBatches(ctx) {
+        return this._getByPartial(ctx, 'Batch');
+    }
+
     async getBatchesByStatus(ctx, status) {
         const all = await this._getByPartial(ctx, 'Batch');
         return all.filter(b => b.status === status);
-    }
-
-    async getAllBatches(ctx) {
-        return await this._getByPartial(ctx, 'Batch');
     }
 
     async getBatchesByFarm(ctx, farm_id) {
@@ -183,9 +172,16 @@ class HalalTraceabilityContract extends Contract {
         this._assert(batch.status === BATCH_STATUS.CREATED, 'Invalid state');
 
         batch.status = BATCH_STATUS.WAITING_FOR_TRANSPORT;
-
         await this._putState(ctx, this._batchKey(ctx, batch_id), batch);
-        await this._addTrace(ctx, batch_id, null, 0, `Dispatched to transport at ${dispatch_time} with ${number_of_chicken} and current temp : ${room_temperature}`, JSON.parse(extra_info || '{}'));
+
+        await this._addTrace(
+            ctx,
+            batch_id,
+            null,
+            0,
+            `Batch dispatched at ${dispatch_time} with ${number_of_chicken} chickens, temperature ${room_temperature}°C`,
+            JSON.parse(extra_info || '{}')
+        );
     }
 
     async acceptBatchForTransport(ctx, batch_id, acceptance_time, number_of_chicken, extra_info) {
@@ -195,7 +191,14 @@ class HalalTraceabilityContract extends Contract {
         batch.status = BATCH_STATUS.IN_TRANSPORT;
         await this._putState(ctx, this._batchKey(ctx, batch_id), batch);
 
-        await this._addTrace(ctx, batch_id, null, 0, 'accepted_for_transport', JSON.parse(extra_info || '{}'));
+        await this._addTrace(
+            ctx,
+            batch_id,
+            null,
+            0,
+            `Batch accepted for transport at ${acceptance_time} with ${number_of_chicken} chickens`,
+            JSON.parse(extra_info || '{}')
+        );
     }
 
     async deliverBatch(ctx, batch_id, slaughter_house_id, delivery_time, number_of_chicken, extra_info) {
@@ -206,7 +209,15 @@ class HalalTraceabilityContract extends Contract {
         batch.slaughter_house_id = +slaughter_house_id;
 
         await this._putState(ctx, this._batchKey(ctx, batch_id), batch);
-        await this._addTrace(ctx, batch_id, null, 0, 'delivered_to_slaughterhouse', JSON.parse(extra_info || '{}'));
+
+        await this._addTrace(
+            ctx,
+            batch_id,
+            null,
+            0,
+            `Batch delivered to slaughterhouse ${slaughter_house_id} at ${delivery_time} with ${number_of_chicken} chickens`,
+            JSON.parse(extra_info || '{}')
+        );
     }
 
     async acceptBatchForSlaughtering(ctx, batch_id, slaughter_house_id, acceptance_time, number_of_chicken, extra_info) {
@@ -216,12 +227,15 @@ class HalalTraceabilityContract extends Contract {
         batch.status = BATCH_STATUS.SLAUGHTERING;
         await this._putState(ctx, this._batchKey(ctx, batch_id), batch);
 
-        await this._addTrace(ctx, batch_id, null, 0, 'accepted_for_slaughter', JSON.parse(extra_info || '{}'));
+        await this._addTrace(
+            ctx,
+            batch_id,
+            null,
+            0,
+            `Batch accepted for slaughtering at slaughterhouse ${slaughter_house_id} on ${acceptance_time} with ${number_of_chicken} chickens`,
+            JSON.parse(extra_info || '{}')
+        );
     }
-
-    // ============================================================
-    // PROCESSING
-    // ============================================================
 
     async createProcessedBatch(ctx, batch_id, number_of_split_batches, extra_info) {
         const batch = await this.getBatchById(ctx, batch_id);
@@ -250,38 +264,28 @@ class HalalTraceabilityContract extends Contract {
 
         batch.status = BATCH_STATUS.PROCESSED;
         batch.number_of_processed_units = count;
-
         await this._putState(ctx, this._batchKey(ctx, batch_id), batch);
+
+        await this._addTrace(
+            ctx,
+            batch_id,
+            null,
+            0,
+            `Batch processed into ${count} units`,
+            JSON.parse(extra_info || '{}')
+        );
+
         return units;
     }
 
-    async getProcessedBatchById(ctx, id) {
-        return this._getState(ctx, this._processedKey(ctx, id));
-    }
-
-    async getProcessedBatchesByBatch(ctx, batch_id) {
-        const all = await this._getByPartial(ctx, 'ProcessedBatch');
-        return all.filter(p => p.original_batch_id === +batch_id);
-    }
-
-    async getProcessedBatchesByStatus(ctx, status) {
-        const all = await this._getByPartial(ctx, 'ProcessedBatch');
-        return all.filter(p => p.status === status);
-    }
-
-    // ============================================================
-    // GLOBAL TRANSITIONS
-    // ============================================================
-
     async rejectBatch(ctx, batch_id, reason, actor_id) {
         const batch = await this.getBatchById(ctx, batch_id);
-        if (batch) {
-            batch.status = BATCH_STATUS.REJECTED;
-            await this._putState(ctx, this._batchKey(ctx, batch_id), batch);
-            await this._addTrace(ctx, batch_id, null, actor_id, 'rejected', { reason });
-            return;
-        }
-        throw new Error('Batch not found');
+        this._assert(batch, 'Batch not found');
+
+        batch.status = BATCH_STATUS.REJECTED;
+        await this._putState(ctx, this._batchKey(ctx, batch_id), batch);
+
+        await this._addTrace(ctx, batch_id, null, actor_id, `Batch rejected. Reason: ${reason}`, { reason });
     }
 
     async recallBatch(ctx, batch_id, reason, authority_id) {
@@ -290,25 +294,14 @@ class HalalTraceabilityContract extends Contract {
 
         batch.status = BATCH_STATUS.RECALLED;
         await this._putState(ctx, this._batchKey(ctx, batch_id), batch);
-        await this._addTrace(ctx, batch_id, null, authority_id, 'recalled', { reason });
-    }
 
-    // ============================================================
-    // TRACE
-    // ============================================================
+        await this._addTrace(ctx, batch_id, null, authority_id, `Batch recalled by authority. Reason: ${reason}`, { reason });
+    }
 
     async queryTraceOfBatch(ctx, batch_id) {
         const iterator = await ctx.stub.getStateByPartialCompositeKey('Trace', [batch_id.toString()]);
         return this._collect(iterator);
     }
-
-    async getTransportLog(ctx, unit_id) {
-        return this._getState(ctx, ctx.stub.createCompositeKey('TransportLog', [unit_id.toString()]));
-    }
-
-    // ============================================================
-    // HELPERS
-    // ============================================================
 
     async _getByPartial(ctx, objectType) {
         const iterator = await ctx.stub.getStateByPartialCompositeKey(objectType, []);
