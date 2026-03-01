@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { createFarm, listFarms, Farm } from "./action"
+import { createFarm, listFarms, Farm } from "@/lib/actions/farm"
 import { useForm, useFieldArray } from "react-hook-form"
 import { z } from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -23,7 +23,7 @@ import { toast } from "sonner"
 const schema = z.object({
     name: z.string().min(1),
     address: z.string().min(1),
-    additionalInfo: z.array(
+    extra_info: z.array(
         z.object({
             key: z.string().optional(),
             value: z.string().optional(),
@@ -51,17 +51,17 @@ export default function FarmsClient({
         defaultValues: {
             name: "",
             address: "",
-            additionalInfo: [{ key: "", value: "" }],
+            extra_info: [{ key: "", value: "" }],
         },
     })
 
     const { fields, append, remove } = useFieldArray({
         control,
-        name: "additionalInfo",
+        name: "extra_info",
     })
 
     const onSubmit = (data: FormValues) => {
-        const additionalObject = data.additionalInfo
+        const additionalObject = data.extra_info
             .filter(f => f.key?.trim())
             .reduce((acc, curr) => {
                 acc[curr.key!] = curr.value || ""
@@ -73,7 +73,7 @@ export default function FarmsClient({
                 await createFarm({
                     name: data.name,
                     address: data.address,
-                    additionalInfo: additionalObject,
+                    extra_info: additionalObject,
                 })
 
                 const updated = await listFarms()
@@ -136,11 +136,11 @@ export default function FarmsClient({
                                 <div key={field.id} className="flex gap-2">
                                     <Input
                                         placeholder="Key"
-                                        {...register(`additionalInfo.${index}.key`)}
+                                        {...register(`extra_info.${index}.key`)}
                                     />
                                     <Input
                                         placeholder="Value"
-                                        {...register(`additionalInfo.${index}.value`)}
+                                        {...register(`extra_info.${index}.value`)}
                                     />
                                     <Button
                                         type="button"
@@ -196,8 +196,8 @@ export default function FarmsClient({
                                         <TableCell>{farm.address}</TableCell>
                                         <TableCell>
                                             <div className="space-y-1 text-sm">
-                                                {Object.entries(farm.additionalInfo).length === 0 && "—"}
-                                                {Object.entries(farm.additionalInfo).map(([k, v]) => (
+                                                {Object.entries(farm.extra_info).length === 0 && "—"}
+                                                {Object.entries(farm.extra_info).map(([k, v]) => (
                                                     <div key={k}>
                                                         - <span className="font-medium">{k}</span> : {v}
                                                     </div>

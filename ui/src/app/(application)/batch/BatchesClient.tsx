@@ -1,12 +1,14 @@
 "use client"
 
-import { useState, useTransition } from "react"
-import { createPoultryBatch, getAllBatches, PoultryBatch } from "./action"
+import { useState, useTransition, useEffect } from "react"
+import { createPoultryBatch, getAllBatches, PoultryBatch } from "@/lib/actions/batch"
+import { listFarms, Farm } from "@/lib/actions/farm"
 import { useForm, useFieldArray } from "react-hook-form"
 import { z } from "zod"
 import { useRouter } from "next/navigation"
-import { Search } from "lucide-react"
+import { Search, Loader2, Plus, Trash } from "lucide-react"
 import { zodResolver } from "@hookform/resolvers/zod"
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -19,12 +21,19 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
-import { Loader2, Plus, Trash } from "lucide-react"
+
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
+
 import { toast } from "sonner"
 
 const schema = z.object({
-    id: z.coerce.number(),
-    farm_id: z.coerce.number(),
+    farm_id: z.coerce.number().min(1, "Farm is required"),
     add_date: z.string().min(1),
     age_of_chicken: z.coerce.number(),
     breed_type: z.string().min(1),
@@ -40,19 +49,25 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>
 
 export default function BatchesClient({
-    initialBatches,
-}: {
+                                          initialBatches,
+                                      }: {
     initialBatches: PoultryBatch[]
 }) {
     const [batches, setBatches] = useState(initialBatches)
+    const [farms, setFarms] = useState<Farm[]>([])
     const [isPending, startTransition] = useTransition()
-
     const router = useRouter()
 
-    const { register, control, handleSubmit, reset } = useForm<FormValues>({
+    const {
+        register,
+        control,
+        handleSubmit,
+        reset,
+        setValue,
+        formState: { errors },
+    } = useForm<FormValues>({
         resolver: zodResolver(schema),
         defaultValues: {
-            id: 0,
             farm_id: 0,
             add_date: "",
             age_of_chicken: 0,
@@ -66,6 +81,10 @@ export default function BatchesClient({
         control,
         name: "extra_info",
     })
+
+    useEffect(() => {
+        listFarms().then(setFarms)
+    }, [])
 
     const onSubmit = (data: FormValues) => {
         const extraObject = data.extra_info
@@ -90,9 +109,7 @@ export default function BatchesClient({
                     description: "Poultry batch added successfully",
                 })
             } catch (e: any) {
-                toast("Error", {
-                    description: e.message,
-                })
+                toast("Error", { description: e.message })
             }
         })
     }
@@ -104,36 +121,66 @@ export default function BatchesClient({
                 <CardHeader>
                     <CardTitle>Create Poultry Batch</CardTitle>
                 </CardHeader>
+
                 <CardContent>
                     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
 
                         <div className="grid md:grid-cols-2 gap-4">
+
+                            {/* FARM SELECT */}
                             <div>
-                                <Label>Batch ID</Label>
-                                <Input className="mt-2" {...register("id")} />
+                                <Label>Farm</Label>
+
+                                <Select
+                                    onValueChange={(value) =>
+                                        setValue("farm_id", Number(value), { shouldValidate: true })
+                                    }
+                                >
+                                    <SelectTrigger className="mt-2 w-full">
+                                        <SelectValue placeholder="Select Farm" />
+                                    </SelectTrigger>
+
+                                    <SelectContent>
+                                        {farms.map((farm) => (
+                                            <SelectItem
+                                                key={farm.id}
+                                                value={String(farm.id)}
+                                            >
+                                                {farm.id} : {farm.name} ({farm.address})
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+
+                                {errors.farm_id && (
+                                    <p className="text-sm text-red-500 mt-1">
+                                        {errors.farm_id.message}
+                                    </p>
+                                )}
                             </div>
-                            <div>
-                                <Label>Farm ID</Label>
-                                <Input className="mt-2" {...register("farm_id")} />
-                            </div>
+
                             <div>
                                 <Label>Add Date</Label>
                                 <Input type="date" className="mt-2" {...register("add_date")} />
                             </div>
+
                             <div>
                                 <Label>Age of Chicken (days)</Label>
                                 <Input className="mt-2" {...register("age_of_chicken")} />
                             </div>
+
                             <div>
                                 <Label>Breed Type</Label>
                                 <Input className="mt-2" {...register("breed_type")} />
                             </div>
+
                             <div>
                                 <Label>Ideal Temperature (°C)</Label>
                                 <Input className="mt-2" {...register("ideal_temperature")} />
                             </div>
                         </div>
 
+                        {/* EXTRA INFO */}
                         <div className="space-y-2">
                             <div className="flex justify-between">
                                 <Label>Extra Info</Label>

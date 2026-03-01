@@ -24,22 +24,32 @@ const data = {
       items: [
         {
           title: "Farm",
-          url: "farms",
+          url: "/farms",
         },
         {
           title: "Slaughter House",
-          url: "slaughter-house",
+          url: "/slaughter-house",
         },
         {
           title: "Retail Shop",
-          url: "retail-shop",
+          url: "/retail-shop",
         },
         {
-          title: "Batch",
-          url: "batch",
+          title: "Create Batch",
+          url: "/batch",
         },
       ],
     },
+      {
+          title: "Move Batch",
+          url: "#",
+          items: [
+              {
+                  title: "Dispatch",
+                  url: "/batch/move/dispatch",
+              },
+          ],
+      },
     /*{
       title: "Build Your Application",
       url: "#",

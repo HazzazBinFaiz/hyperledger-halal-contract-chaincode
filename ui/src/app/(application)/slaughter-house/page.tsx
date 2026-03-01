@@ -1,4 +1,4 @@
-import { listSlaughterHouses } from "./action"
+import { listSlaughterHouses } from "@/lib/actions/slaughter-house"
 import SlaugterHouse from "./SlaughterHouseClient"
 
 export default async function Page() {

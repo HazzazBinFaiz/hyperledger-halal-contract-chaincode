@@ -28,6 +28,7 @@ export default function RootLayout({
     <html lang="en">
       <body
         className={`${robotoSans.variable} ${robotoMono.variable} antialiased`}
+        suppressHydrationWarning={true}
       >
         <TooltipProvider>
           <Toaster/>

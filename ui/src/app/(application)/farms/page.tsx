@@ -1,4 +1,4 @@
-import { listFarms } from "./action"
+import { listFarms } from "@/lib/actions/farm"
 import FarmsClient from "./FarmsClient"
 
 export default async function Page() {
