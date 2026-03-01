@@ -264,7 +264,7 @@ export default function BatchesClient({
                                                 size="icon"
                                                 variant="ghost"
                                                 onClick={() =>
-                                                    router.push(`/trace/${batch.id}?type=batch`)
+                                                    router.push(`/batch/trace/?id=${batch.id}`)
                                                 }
                                             >
                                                 <Search className="w-4 h-4" />

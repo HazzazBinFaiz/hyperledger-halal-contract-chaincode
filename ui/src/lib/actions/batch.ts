@@ -55,16 +55,21 @@ export async function createPoultryBatch(data: {
     extra_info: data.extra_info,
   };
 
-    await contract.submitTransaction(
-        'createPoultryBatch',
-        (maxId + 1).toString(),
-        data.farm_id.toString(),
-        data.add_date,
-        data.age_of_chicken.toString(),
-        data.breed_type.toString(),
-        data.ideal_temperature.toString(),
-        JSON.stringify(data.extra_info),
-    )
+    try {
+        await contract.submitTransaction(
+            'createPoultryBatch',
+            (maxId + 1).toString(),
+            data.farm_id.toString(),
+            data.add_date.toString(),
+            data.age_of_chicken.toString(),
+            data.breed_type.toString(),
+            data.ideal_temperature.toString(),
+            JSON.stringify(data.extra_info),
+        );
+    } catch (e) {
+        console.dir(e.details)
+        throw e;
+    }
   return batch
 }
 
@@ -165,4 +170,24 @@ export async function recallBatch(
         reason,
         authority_id.toString()
     )
+}
+
+
+export type PoultryBatchTrace = {
+    batch_id: number
+    unit_id: number
+    datetime: string
+    actor_id: number
+    action: string
+    extra_info: Record<string, any>
+}
+
+export async function getTraceOfBatch(batch_id: number): Promise<PoultryBatchTrace[]> {
+    const resultBytes = await contract.evaluateTransaction('queryTraceOfBatch', batch_id.toString())
+    return JSON.parse(utf8Decoder.decode(resultBytes)) as PoultryBatchTrace[]
+}
+
+export async function getBatchById(batch_id: number): Promise<PoultryBatchTrace[]> {
+    const resultBytes = await contract.evaluateTransaction('getBatchById', batch_id.toString())
+    return JSON.parse(utf8Decoder.decode(resultBytes)) as PoultryBatchTrace[]
 }
