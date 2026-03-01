@@ -1,7 +1,7 @@
 // action.ts
 "use server"
 
-type Farm = {
+export type Farm = {
   id: number
   name: string
   address: string

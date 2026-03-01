@@ -169,6 +169,10 @@ class HalalTraceabilityContract extends Contract {
         return all.filter(b => b.status === status);
     }
 
+    async getAllBatches(ctx) {
+        return await this._getByPartial(ctx, 'Batch');
+    }
+    
     async getBatchesByFarm(ctx, farm_id) {
         const all = await this._getByPartial(ctx, 'Batch');
         return all.filter(b => b.farm_id === +farm_id);

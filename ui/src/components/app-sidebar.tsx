@@ -34,6 +34,10 @@ const data = {
           title: "Retail Shop",
           url: "retail-shop",
         },
+        {
+          title: "Batch",
+          url: "batch",
+        },
       ],
     },
     /*{
