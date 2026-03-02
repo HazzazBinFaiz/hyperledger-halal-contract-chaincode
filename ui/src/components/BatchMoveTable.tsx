@@ -3,6 +3,9 @@
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from "@/components/ui/table"
 import {Checkbox} from "@/components/ui/checkbox"
 import {PoultryBatch} from "@/lib/actions/batch"
+import {Button} from "@/components/ui/button";
+import {Search} from "lucide-react";
+import {useRouter} from "next/navigation";
 
 type Props = {
     batches: PoultryBatch[]
@@ -11,23 +14,24 @@ type Props = {
 }
 
 export default function BatchMoveTable({batches, selected, onSelect}: Props) {
+    const router = useRouter()
     return (
         <Table>
             <TableHeader>
                 <TableRow>
                     <TableHead/>
-                    <TableHead>ID</TableHead>
-                    <TableHead>Farm</TableHead>
+                    <TableHead>Batch ID</TableHead>
+                    <TableHead>Farm ID</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Breed</TableHead>
+                    <TableHead className={'text-right'}>Trace</TableHead>
                 </TableRow>
             </TableHeader>
 
             <TableBody>
                 {batches.length === 0 ? (
                     <TableRow>
-                        <TableCell colSpan={4} className="text-center text-muted-foreground py-6">
-                            No farm found
+                        <TableCell colSpan={5} className="text-center text-muted-foreground py-6">
+                            No Batch found
                         </TableCell>
                     </TableRow>
                 ) : batches.map(batch => (
@@ -41,7 +45,17 @@ export default function BatchMoveTable({batches, selected, onSelect}: Props) {
                         <TableCell>{batch.id}</TableCell>
                         <TableCell>{batch.farm_id}</TableCell>
                         <TableCell>{batch.status}</TableCell>
-                        <TableCell>{batch.breed_type}</TableCell>
+                        <TableCell className="text-right">
+                            <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={() =>
+                                    router.push(`/batch/trace/?id=${batch.id}`)
+                                }
+                            >
+                                <Search className="w-4 h-4" />
+                            </Button>
+                        </TableCell>
                     </TableRow>
                 ))}
             </TableBody>

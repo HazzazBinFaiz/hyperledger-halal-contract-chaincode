@@ -5,9 +5,12 @@ import BatchMoveTable from "@/components/BatchMoveTable"
 import BatchMoveForm from "@/components/BatchMoveForm"
 import { PoultryBatch, deliverBatch } from "@/lib/actions/batch"
 import { toast } from "sonner"
+import {useRouter} from "next/navigation";
+import {listSlaughterHouses, SlaughterHouse} from "@/lib/actions/slaughter-house";
 
-export default function DeliverPageClient({ batches }: { batches: PoultryBatch[] }) {
+export default function DeliverPageClient({ batches, slaughterHouses }: { batches: PoultryBatch[], slaughterHouses: SlaughterHouse[] }) {
     const [selected, setSelected] = useState<number[]>([])
+    const router = useRouter()
 
     const handleSubmit = async (data: any) => {
         if (!selected.length) return toast("Select batch")
@@ -23,6 +26,8 @@ export default function DeliverPageClient({ batches }: { batches: PoultryBatch[]
         }
 
         toast(`Batch ${selected.join(",")} delivered to slaughterhouse`)
+
+        router.refresh()
     }
 
     return (
@@ -30,7 +35,10 @@ export default function DeliverPageClient({ batches }: { batches: PoultryBatch[]
             <BatchMoveForm
                 title="Deliver To Slaughterhouse"
                 fields={[
-                    { name: "slaughter_house_id", label: "Slaughterhouse ID", type: "number" },
+                    { name: "slaughter_house_id", label: "Slaughter House", type: "select", options: slaughterHouses.map((house) => ({
+                            label: house.name, value: house.id
+                        }))
+                    },
                     { name: "delivery_time", label: "Delivery Time", type: "datetime-local" },
                     { name: "number_of_chicken", label: "Number of Chicken", type: "number" },
                     { name: "extra_info", label: "Additional Info" }

@@ -5,9 +5,11 @@ import BatchMoveTable from "@/components/BatchMoveTable"
 import BatchMoveForm from "@/components/BatchMoveForm"
 import { PoultryBatch, dispatchBatchToTransport } from "@/lib/actions/batch"
 import { toast } from "sonner"
+import {useRouter} from "next/navigation";
 
 export default function DispatchPageClient({ batches }: { batches: PoultryBatch[] }) {
     const [selected, setSelected] = useState<number[]>([])
+    const router = useRouter()
 
     const handleSubmit = async (data: any) => {
         if (selected.length === 0) return toast("Select batch");
@@ -16,6 +18,8 @@ export default function DispatchPageClient({ batches }: { batches: PoultryBatch[
         }
 
         toast(`Batch ${selected.join(',')} moved to WAITING_FOR_TRANSPORT`)
+
+        router.refresh()
 
         return;
     }
@@ -31,24 +35,6 @@ export default function DispatchPageClient({ batches }: { batches: PoultryBatch[
                     {
                         name: "extra_info",
                         label: "Additional Info",
-                        // extraInfoConfig: {
-                        //     presets: [
-                        //         {
-                        //             key: "vehicle_number",
-                        //             required: true,
-                        //             removable: false,
-                        //         },
-                        //         {
-                        //             key: "driver_name",
-                        //             required: true,
-                        //             removable: false,
-                        //         },
-                        //         {
-                        //             key: "note",
-                        //             removable: true,
-                        //         },
-                        //     ],
-                        // },
                     },
                 ]}
                 onSubmit={handleSubmit}

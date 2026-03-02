@@ -5,9 +5,12 @@ import BatchMoveTable from "@/components/BatchMoveTable"
 import BatchMoveForm from "@/components/BatchMoveForm"
 import { PoultryBatch, acceptBatchForTransport } from "@/lib/actions/batch"
 import { toast } from "sonner"
+import {useRouter} from "next/navigation";
 
 export default function AcceptTransportPageClient({ batches }: { batches: PoultryBatch[] }) {
     const [selected, setSelected] = useState<number[]>([])
+
+    const router = useRouter()
 
     const handleSubmit = async (data: any) => {
         if (!selected.length) return toast("Select batch")
@@ -22,6 +25,8 @@ export default function AcceptTransportPageClient({ batches }: { batches: Poultr
         }
 
         toast(`Batch ${selected.join(",")} moved to IN_TRANSPORT`)
+
+        router.refresh()
     }
 
     return (

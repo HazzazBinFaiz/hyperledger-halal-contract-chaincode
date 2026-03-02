@@ -61,7 +61,7 @@ class HalalTraceabilityContract extends Contract {
     }
 
     async _addTrace(ctx, batchId, unitId, actorId, action, extra) {
-        const datetime = new Date().toISOString();
+        const datetime = ctx.stub.getDateTimestamp().toISOString();
         const trace = {
             batch_id: batchId,
             unit_id: unitId || 0,
@@ -225,6 +225,7 @@ class HalalTraceabilityContract extends Contract {
         this._assert(batch.status === BATCH_STATUS.DELIVERED_TO_SLAUGHTERHOUSE, 'Invalid state');
 
         batch.status = BATCH_STATUS.SLAUGHTERING;
+        this._assert(batch.slaughter_house_id.toString() === slaughter_house_id, 'Slaughter house invalid')
         await this._putState(ctx, this._batchKey(ctx, batch_id), batch);
 
         await this._addTrace(
@@ -253,7 +254,7 @@ class HalalTraceabilityContract extends Contract {
                 original_batch_id: +batch_id,
                 unit_id: unitId,
                 status: UNIT_STATUS.CREATED,
-                created_at: new Date().toISOString(),
+                created_at: ctx.stub.getDateTimestamp().toISOString(),
                 weight: 0,
                 extra_info: JSON.parse(extra_info || '{}')
             };
