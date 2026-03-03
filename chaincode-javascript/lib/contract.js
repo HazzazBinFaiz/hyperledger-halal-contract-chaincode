@@ -217,6 +217,28 @@ class HalalTraceabilityContract extends Contract {
         );
     }
 
+    async addIoTTraceForBatch(ctx, batch_id, longitude, latitude, temperature, extra_info) {
+        const batch = await this.getBatchById(ctx, batch_id);
+        this._assert(batch, 'Batch not found');
+        this._assert(batch.status === BATCH_STATUS.IN_TRANSPORT, 'Batch must be in transport');
+
+        const payload = {
+            longitude: Number(longitude),
+            latitude: Number(latitude),
+            temperature: Number(temperature),
+            ...JSON.parse(extra_info || '{}')
+        };
+
+        await this._addTrace(
+            ctx,
+            batch_id,
+            null,
+            0,
+            'IoT telemetry captured for batch transport',
+            payload
+        );
+    }
+
     async acceptBatchForSlaughtering(ctx, batch_id, slaughter_house_id, acceptance_time, number_of_chicken, extra_info) {
         const batch = await this.getBatchById(ctx, batch_id);
         this._assert(batch.status === BATCH_STATUS.DELIVERED_TO_SLAUGHTERHOUSE, 'Invalid state');
@@ -317,6 +339,28 @@ class HalalTraceabilityContract extends Contract {
             0,
             `Processed unit accepted for frozen transport at ${acceptance_time}`,
             JSON.parse(extra_info || '{}')
+        );
+    }
+
+    async addIoTTraceForProcessedBatch(ctx, unit_id, longitude, latitude, temperature, extra_info) {
+        const unit = await this.getProcessedBatchById(ctx, unit_id);
+        this._assert(unit, 'Processed batch not found');
+        this._assert(unit.status === UNIT_STATUS.IN_FROZEN_TRANSPORT, 'Processed batch must be in frozen transport');
+
+        const payload = {
+            longitude: Number(longitude),
+            latitude: Number(latitude),
+            temperature: Number(temperature),
+            ...JSON.parse(extra_info || '{}')
+        };
+
+        await this._addTrace(
+            ctx,
+            unit.original_batch_id,
+            unit.unit_id,
+            0,
+            'IoT telemetry captured for frozen transport',
+            payload
         );
     }
 

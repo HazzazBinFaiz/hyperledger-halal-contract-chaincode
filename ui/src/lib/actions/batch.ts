@@ -65,25 +65,20 @@ export async function createPoultryBatch(data: {
     extra_info: data.extra_info,
   };
 
-    try {
-        await contract.submitTransaction(
-            'createPoultryBatch',
-            (maxId + 1).toString(),
-            data.farm_id.toString(),
-            data.add_date.toString(),
-            data.age_of_chicken.toString(),
-            data.breed_type.toString(),
-            data.ideal_temperature.toString(),
-            JSON.stringify(data.extra_info),
-        );
-    } catch (e) {
-        console.dir(e.details)
-        throw e;
-    }
+    await contract.submitTransaction(
+        'createPoultryBatch',
+        (maxId + 1).toString(),
+        data.farm_id.toString(),
+        data.add_date.toString(),
+        data.age_of_chicken.toString(),
+        data.breed_type.toString(),
+        data.ideal_temperature.toString(),
+        JSON.stringify(data.extra_info),
+    );
   return batch
 }
 
-export async function dispatchBatchToTransport(batch_id, dispatch_time, number_of_chicken, room_temperature, extra_info) {
+export async function dispatchBatchToTransport(batch_id: number, dispatch_time: string, number_of_chicken: string, room_temperature: string, extra_info: Record<string, string>) {
     await contract.submitTransaction(
         'dispatchBatchToTransport',
         batch_id.toString(),
@@ -253,19 +248,6 @@ export async function rejectBatch(
     )
 }
 
-export async function recallBatch(
-    batch_id: number,
-    reason: string,
-    authority_id: number
-) {
-    await contract.submitTransaction(
-        'recallBatch',
-        batch_id.toString(),
-        reason,
-        authority_id.toString()
-    )
-}
-
 
 export type PoultryBatchTrace = {
     batch_id: number
@@ -291,5 +273,39 @@ export async function getTraceOfProcessedBatch(unit_id: number): Promise<Poultry
     if (!unit) return []
 
     const traces = await getTraceOfBatch(unit.original_batch_id)
-    return traces.filter((trace) => trace.unit_id === unit_id)
+    return traces.filter((trace) => trace.unit_id === 0 || trace.unit_id === unit_id)
+}
+
+export async function addIoTTraceForBatch(
+    batch_id: number,
+    longitude: number,
+    latitude: number,
+    temperature: number,
+    extra_info: Record<string, string>
+) {
+    await contract.submitTransaction(
+        'addIoTTraceForBatch',
+        batch_id.toString(),
+        longitude.toString(),
+        latitude.toString(),
+        temperature.toString(),
+        JSON.stringify(extra_info)
+    )
+}
+
+export async function addIoTTraceForProcessedBatch(
+    unit_id: number,
+    longitude: number,
+    latitude: number,
+    temperature: number,
+    extra_info: Record<string, string>
+) {
+    await contract.submitTransaction(
+        'addIoTTraceForProcessedBatch',
+        unit_id.toString(),
+        longitude.toString(),
+        latitude.toString(),
+        temperature.toString(),
+        JSON.stringify(extra_info)
+    )
 }

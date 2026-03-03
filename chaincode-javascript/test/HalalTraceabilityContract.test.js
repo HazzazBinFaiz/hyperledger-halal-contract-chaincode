@@ -1,200 +1,418 @@
 'use strict';
 
-const sinon = require('sinon');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
-const { Context } = require('fabric-contract-api');
-
 const HalalTraceabilityContract = require('../lib/contract');
 
-chai.should();
 chai.use(chaiAsPromised);
-const expect = chai.expect;
+const { expect } = chai;
+
+function createMockContext() {
+    const state = new Map();
+    let tsCounter = 0;
+
+    const createCompositeKey = (type, parts) => `${type}:${parts.join(':')}`;
+
+    const stub = {
+        createCompositeKey,
+
+        async getState(key) {
+            return state.has(key) ? Buffer.from(state.get(key)) : Buffer.from('');
+        },
+
+        async putState(key, value) {
+            state.set(key, value.toString());
+        },
+
+        async getStateByPartialCompositeKey(objectType, attributes) {
+            const prefix = attributes.length
+                ? `${objectType}:${attributes.join(':')}`
+                : `${objectType}:`;
+
+            const entries = [...state.entries()]
+                .filter(([key]) => key.startsWith(prefix))
+                .map(([, value]) => value);
+
+            let index = 0;
+            return {
+                async next() {
+                    if (index < entries.length) {
+                        const value = entries[index++];
+                        return { value: { value: Buffer.from(value) }, done: false };
+                    }
+                    return { done: true };
+                },
+                async close() {
+                    return;
+                }
+            };
+        },
+
+        getDateTimestamp() {
+            tsCounter += 1;
+            return new Date(Date.UTC(2026, 0, 1, 0, 0, tsCounter));
+        }
+    };
+
+    return { ctx: { stub }, state };
+}
+
+async function seedEntity(ctx, type, id, value) {
+    const key = ctx.stub.createCompositeKey(type, [id.toString()]);
+    await ctx.stub.putState(key, Buffer.from(JSON.stringify(value)));
+}
 
 describe('HalalTraceabilityContract', () => {
-
-    let sandbox;
     let contract;
     let ctx;
+    let state;
 
     beforeEach(() => {
-        sandbox = sinon.createSandbox();
         contract = new HalalTraceabilityContract();
+        const setup = createMockContext();
+        ctx = setup.ctx;
+        state = setup.state;
+    });
 
-        ctx = sinon.createStubInstance(Context);
-        ctx.stub = {
-            createCompositeKey: sinon.stub().callsFake((type, parts) => `${type}:${parts.join(':')}`),
-            getState: sinon.stub(),
-            putState: sinon.stub().resolves(),
-            getStateByPartialCompositeKey: sinon.stub()
+    it('covers utility helpers', async () => {
+        expect(contract._batchKey(ctx, 7)).to.equal('Batch:7');
+        expect(contract._processedKey(ctx, 7010)).to.equal('ProcessedBatch:7010');
+        expect(contract._traceKey(ctx, 7, null, 't')).to.equal('Trace:7:0:t');
+        expect(contract._unitStatusKey(ctx, 7, 1)).to.equal('BatchUnit:7:1');
+
+        await contract._putState(ctx, 'X:1', { a: 1 });
+        const parsed = await contract._getState(ctx, 'X:1');
+        expect(parsed).to.deep.equal({ a: 1 });
+
+        const missing = await contract._getState(ctx, 'X:2');
+        expect(missing).to.equal(null);
+
+        const originalGetState = ctx.stub.getState;
+        ctx.stub.getState = async () => undefined;
+        const missingByUndefined = await contract._getState(ctx, 'X:3');
+        expect(missingByUndefined).to.equal(null);
+        ctx.stub.getState = originalGetState;
+
+        await contract._addTrace(ctx, 7, null, 1, 'Manual trace without extra');
+        const traceList = await contract.queryTraceOfBatch(ctx, 7);
+        expect(traceList[0].extra_info).to.deep.equal({});
+
+        expect(() => contract._assert(true, 'nope')).to.not.throw();
+        expect(() => contract._assert(false, 'boom')).to.throw('boom');
+    });
+
+    it('creates and queries all actor types', async () => {
+        const farmer = await contract.createFarmer(ctx, 1, 'F1', 'A1', '{"note":"n"}');
+        expect(farmer.id).to.equal(1);
+
+        await expect(contract.createFarmer(ctx, 1, 'F1', 'A1', '{}')).to.be.rejectedWith('Farmer exists');
+
+        await contract.createSlaughteringHouse(ctx, 10, 'S1', 'SA', '{}');
+        await contract.createRetailShop(ctx, 20, 'R1', 'RA', '{}');
+
+        const farmerById = await contract.getFarmerById(ctx, 1);
+        const slaughterById = await contract.getSlaughterHouseById(ctx, 10);
+        const retailById = await contract.getRetailShopById(ctx, 20);
+
+        expect(farmerById.name).to.equal('F1');
+        expect(slaughterById.name).to.equal('S1');
+        expect(retailById.name).to.equal('R1');
+
+        const allFarmers = await contract.getAllFarmers(ctx);
+        const allSlaughter = await contract.getAllSlaughterHouses(ctx);
+        const allRetail = await contract.getAllRetailShops(ctx);
+
+        expect(allFarmers).to.have.length(1);
+        expect(allSlaughter).to.have.length(1);
+        expect(allRetail).to.have.length(1);
+    });
+
+    it('runs complete batch lifecycle including iot and queries', async () => {
+        const batch = await contract.createPoultryBatch(ctx, 100, 1, '2026-01-01T10:00:00Z', 35, 'Broiler', 22, '{"origin":"farm-a"}');
+        expect(batch.status).to.equal('CREATED');
+
+        const batchById = await contract.getBatchById(ctx, 100);
+        expect(batchById.id).to.equal(100);
+
+        let byStatus = await contract.getBatchesByStatus(ctx, 'CREATED');
+        expect(byStatus).to.have.length(1);
+        let byFarm = await contract.getBatchesByFarm(ctx, 1);
+        expect(byFarm).to.have.length(1);
+
+        await contract.dispatchBatchToTransport(ctx, 100, '2026-01-01T11:00:00Z', 500, 24, '{"truck":"T1"}');
+        await contract.acceptBatchForTransport(ctx, 100, '2026-01-01T11:30:00Z', 500, '{}');
+        await contract.addIoTTraceForBatch(ctx, 100, '90.41', '23.81', '4.2', '{"sensor":"s1"}');
+        await contract.deliverBatch(ctx, 100, 9, '2026-01-01T13:00:00Z', 499, '{}');
+        await contract.acceptBatchForSlaughtering(ctx, 100, '9', '2026-01-01T14:00:00Z', 499, '{}');
+        const units = await contract.createProcessedBatch(ctx, 100, 2, '{"lot":"L1"}');
+
+        expect(units).to.have.length(2);
+        expect(units[0].unit_id).to.equal(100001);
+
+        byStatus = await contract.getBatchesByStatus(ctx, 'PROCESSED');
+        expect(byStatus).to.have.length(1);
+
+        const traces = await contract.queryTraceOfBatch(ctx, 100);
+        expect(traces.length).to.be.greaterThan(6);
+
+        const allBatches = await contract.getAllBatches(ctx);
+        const allProcessed = await contract.getAllProcessedBatches(ctx);
+        expect(allBatches).to.have.length(1);
+        expect(allProcessed).to.have.length(2);
+    });
+
+    it('runs complete processed unit lifecycle including iot', async () => {
+        const unit = {
+            original_batch_id: 100,
+            unit_id: 100001,
+            status: 'CREATED',
+            created_at: '2026-01-01T00:00:00Z',
+            weight: 0,
+            extra_info: {}
         };
+
+        await seedEntity(ctx, 'ProcessedBatch', 100001, unit);
+
+        await contract.dispatchProcessedBatchToFrozenTransport(ctx, 100001, '2026-01-01T15:00:00Z', 2, '{}');
+        await contract.acceptProcessedBatchForFrozenTransport(ctx, 100001, '2026-01-01T16:00:00Z', '{}');
+        await contract.addIoTTraceForProcessedBatch(ctx, 100001, '91.2', '24.3', '-8.5', '{"sensor":"cold-2"}');
+        await contract.deliverProcessedBatchToRetail(ctx, 100001, 55, '2026-01-01T17:00:00Z', '{}');
+        await contract.putProcessedBatchOnSale(ctx, 100001, '2026-01-01T18:00:00Z', '{}');
+        await contract.sellProcessedBatch(ctx, 100001, '2026-01-01T19:00:00Z', '{}');
+
+        const soldUnit = await contract.getProcessedBatchById(ctx, 100001);
+        expect(soldUnit.status).to.equal('SOLD');
+        expect(soldUnit.retail_shop_id).to.equal(55);
     });
 
-    afterEach(() => {
-        sandbox.restore();
+    it('rejects processed unit when sold and allows reject before sold', async () => {
+        await seedEntity(ctx, 'ProcessedBatch', 200001, {
+            original_batch_id: 200,
+            unit_id: 200001,
+            status: 'ON_SALE',
+            created_at: '2026-01-01T00:00:00Z',
+            weight: 0,
+            extra_info: {}
+        });
+
+        await contract.rejectProcessedBatch(ctx, 200001, 'Package damaged', 7);
+        const rejected = await contract.getProcessedBatchById(ctx, 200001);
+        expect(rejected.status).to.equal('REJECTED');
+
+        await seedEntity(ctx, 'ProcessedBatch', 200002, {
+            original_batch_id: 200,
+            unit_id: 200002,
+            status: 'SOLD',
+            created_at: '2026-01-01T00:00:00Z',
+            weight: 0,
+            extra_info: {}
+        });
+
+        await expect(contract.rejectProcessedBatch(ctx, 200002, 'Late reject', 7))
+            .to.be.rejectedWith('Cannot reject sold unit');
     });
 
-    /* ---------------------------------------------------------- */
-    /* ---------------------- createFarmer ---------------------- */
-    /* ---------------------------------------------------------- */
-
-    describe('#createFarmer', () => {
-
-        it('should create farmer if not exists', async () => {
-
-            ctx.stub.getState.resolves(Buffer.from(''));
-
-            const result = await contract.createFarmer(
-                ctx,
-                1,
-                'John',
-                'Dhaka',
-                '{}'
-            );
-
-            sinon.assert.calledOnce(ctx.stub.putState);
-            expect(result.name).to.equal('John');
+    it('rejects batch and validates not-found branch', async () => {
+        await seedEntity(ctx, 'Batch', 300, {
+            id: 300,
+            farm_id: 1,
+            slaughter_house_id: null,
+            status: 'CREATED',
+            created_at: '2026-01-01T00:00:00Z',
+            number_of_chicken: 0,
+            age_of_chicken: 30,
+            breed_type: 'Broiler',
+            ideal_temperature: 22,
+            number_of_processed_units: 0,
+            extra_info: {}
         });
 
-        it('should throw if farmer exists', async () => {
+        await contract.rejectBatch(ctx, 300, 'Contamination', 99);
+        const rejectedBatch = await contract.getBatchById(ctx, 300);
+        expect(rejectedBatch.status).to.equal('REJECTED');
 
-            ctx.stub.getState.resolves(Buffer.from('exists'));
-
-            await expect(
-                contract.createFarmer(ctx, 1, 'John', 'Dhaka', '{}')
-            ).to.be.rejectedWith('Farmer exists');
-        });
-
+        await expect(contract.rejectBatch(ctx, 301, 'Unknown', 99)).to.be.rejectedWith('Batch not found');
     });
 
-    /* ---------------------------------------------------------- */
-    /* ------------------- createPoultryBatch ------------------- */
-    /* ---------------------------------------------------------- */
-
-    describe('#createPoultryBatch', () => {
-
-        it('should create batch with CREATED status', async () => {
-
-            ctx.stub.getState.resolves(Buffer.from(''));
-
-            const batch = await contract.createPoultryBatch(
-                ctx,
-                100,
-                1,
-                new Date().toISOString(),
-                30,
-                'Broiler',
-                22,
-                '{}'
-            );
-
-            expect(batch.status).to.equal('CREATED');
-            sinon.assert.calledOnce(ctx.stub.putState);
+    it('covers invalid-state and not-found branches across transitions', async () => {
+        await seedEntity(ctx, 'Batch', 400, {
+            id: 400,
+            farm_id: 1,
+            slaughter_house_id: null,
+            status: 'WAITING_FOR_TRANSPORT',
+            created_at: 't',
+            number_of_chicken: 0,
+            age_of_chicken: 1,
+            breed_type: 'X',
+            ideal_temperature: 1,
+            number_of_processed_units: 0,
+            extra_info: {}
         });
 
+        await expect(contract.dispatchBatchToTransport(ctx, 400, 't', 1, 1, '{}'))
+            .to.be.rejectedWith('Invalid state');
+
+        await seedEntity(ctx, 'Batch', 401, { ...JSON.parse(JSON.stringify({
+            id: 401,
+            farm_id: 1,
+            slaughter_house_id: null,
+            status: 'CREATED',
+            created_at: 't',
+            number_of_chicken: 0,
+            age_of_chicken: 1,
+            breed_type: 'X',
+            ideal_temperature: 1,
+            number_of_processed_units: 0,
+            extra_info: {}
+        })) });
+
+        await expect(contract.acceptBatchForTransport(ctx, 401, 't', 1, '{}'))
+            .to.be.rejectedWith('Invalid state');
+
+        await expect(contract.deliverBatch(ctx, 401, 1, 't', 1, '{}'))
+            .to.be.rejectedWith('Invalid state');
+
+        await expect(contract.addIoTTraceForBatch(ctx, 401, '1', '1', '1', '{}'))
+            .to.be.rejectedWith('Batch must be in transport');
+
+        await expect(contract.addIoTTraceForBatch(ctx, 999, '1', '1', '1', '{}'))
+            .to.be.rejectedWith('Batch not found');
+
+        await seedEntity(ctx, 'Batch', 402, {
+            id: 402,
+            farm_id: 1,
+            slaughter_house_id: 10,
+            status: 'DELIVERED_TO_SLAUGHTERHOUSE',
+            created_at: 't',
+            number_of_chicken: 0,
+            age_of_chicken: 1,
+            breed_type: 'X',
+            ideal_temperature: 1,
+            number_of_processed_units: 0,
+            extra_info: {}
+        });
+
+        await expect(contract.acceptBatchForSlaughtering(ctx, 402, '9', 't', 1, '{}'))
+            .to.be.rejectedWith('Slaughter house invalid');
+
+        await seedEntity(ctx, 'Batch', 403, {
+            id: 403,
+            farm_id: 1,
+            slaughter_house_id: null,
+            status: 'CREATED',
+            created_at: 't',
+            number_of_chicken: 0,
+            age_of_chicken: 1,
+            breed_type: 'X',
+            ideal_temperature: 1,
+            number_of_processed_units: 0,
+            extra_info: {}
+        });
+
+        await expect(contract.createProcessedBatch(ctx, 403, 1, '{}')).to.be.rejectedWith('Invalid state');
+
+        await seedEntity(ctx, 'Batch', 404, {
+            id: 404,
+            farm_id: 1,
+            slaughter_house_id: 11,
+            status: 'SLAUGHTERING',
+            created_at: 't',
+            number_of_chicken: 0,
+            age_of_chicken: 1,
+            breed_type: 'X',
+            ideal_temperature: 1,
+            number_of_processed_units: 0,
+            extra_info: {}
+        });
+
+        await expect(contract.createProcessedBatch(ctx, 404, 0, '{}')).to.be.rejectedWith('Invalid split count');
+
+        await expect(contract.dispatchProcessedBatchToFrozenTransport(ctx, 900001, 't', 1, '{}'))
+            .to.be.rejectedWith('Processed batch not found');
+
+        await seedEntity(ctx, 'ProcessedBatch', 500001, {
+            original_batch_id: 500,
+            unit_id: 500001,
+            status: 'WAITING_FOR_FROZEN_TRANSPORT',
+            created_at: 't',
+            weight: 0,
+            extra_info: {}
+        });
+
+        await expect(contract.dispatchProcessedBatchToFrozenTransport(ctx, 500001, 't', 1, '{}'))
+            .to.be.rejectedWith('Invalid state');
+
+        await seedEntity(ctx, 'ProcessedBatch', 500002, {
+            original_batch_id: 500,
+            unit_id: 500002,
+            status: 'CREATED',
+            created_at: 't',
+            weight: 0,
+            extra_info: {}
+        });
+
+        await expect(contract.acceptProcessedBatchForFrozenTransport(ctx, 500002, 't', '{}'))
+            .to.be.rejectedWith('Invalid state');
+
+        await expect(contract.addIoTTraceForProcessedBatch(ctx, 500002, '1', '1', '1', '{}'))
+            .to.be.rejectedWith('Processed batch must be in frozen transport');
+
+        await expect(contract.addIoTTraceForProcessedBatch(ctx, 900002, '1', '1', '1', '{}'))
+            .to.be.rejectedWith('Processed batch not found');
+
+        await expect(contract.deliverProcessedBatchToRetail(ctx, 500002, 1, 't', '{}'))
+            .to.be.rejectedWith('Invalid state');
+
+        await expect(contract.putProcessedBatchOnSale(ctx, 500002, 't', '{}'))
+            .to.be.rejectedWith('Invalid state');
+
+        await expect(contract.sellProcessedBatch(ctx, 500002, 't', '{}'))
+            .to.be.rejectedWith('Invalid state');
+
+        await expect(contract.rejectProcessedBatch(ctx, 900003, 'nope', 1))
+            .to.be.rejectedWith('Processed batch not found');
     });
 
-    /* ---------------------------------------------------------- */
-    /* ---------------- dispatchBatchToTransport ---------------- */
-    /* ---------------------------------------------------------- */
+    it('covers _collect empty-value branch', async () => {
+        let calls = 0;
+        const iterator = {
+            async next() {
+                calls += 1;
+                if (calls === 1) {
+                    return { value: { value: Buffer.from('') }, done: false };
+                }
+                return { done: true };
+            },
+            async close() {
+                return;
+            }
+        };
 
-    describe('#dispatchBatchToTransport', () => {
-
-        it('should change status CREATED → WAITING_FOR_TRANSPORT', async () => {
-
-            const batch = {
-                id: 100,
-                status: 'CREATED'
-            };
-
-            ctx.stub.getState.resolves(Buffer.from(JSON.stringify(batch)));
-
-            await contract.dispatchBatchToTransport(
-                ctx,
-                100,
-                new Date().toISOString(),
-                500,
-                25,
-                new Date().toISOString(),
-                '{}'
-            );
-
-            sinon.assert.called(ctx.stub.putState);
-        });
-
-        it('should reject invalid state', async () => {
-
-            const batch = { id: 100, status: 'IN_TRANSPORT' };
-            ctx.stub.getState.resolves(Buffer.from(JSON.stringify(batch)));
-
-            await expect(
-                contract.dispatchBatchToTransport(
-                    ctx, 100, '', 0, 0, '', '{}'
-                )
-            ).to.be.rejectedWith('Invalid state');
-        });
-
+        const res = await contract._collect(iterator);
+        expect(res).to.deep.equal([]);
     });
 
-    /* ---------------------------------------------------------- */
-    /* ---------------- createProcessedBatch -------------------- */
-    /* ---------------------------------------------------------- */
+    it('covers all extra_info fallback branches with undefined input', async () => {
+        await contract.createFarmer(ctx, 901, 'F', 'A');
+        await contract.createSlaughteringHouse(ctx, 902, 'S', 'A');
+        await contract.createRetailShop(ctx, 903, 'R', 'A');
 
-    describe('#createProcessedBatch', () => {
+        await contract.createPoultryBatch(ctx, 910, 1, '2026-01-01T00:00:00Z', 10, 'Broiler', 21);
+        await contract.dispatchBatchToTransport(ctx, 910, 't1', 100, 20);
+        await contract.acceptBatchForTransport(ctx, 910, 't2', 100);
+        await contract.addIoTTraceForBatch(ctx, 910, '1.1', '2.2', '3.3');
+        await contract.deliverBatch(ctx, 910, 9, 't3', 99);
+        await contract.acceptBatchForSlaughtering(ctx, 910, '9', 't4', 99);
+        await contract.createProcessedBatch(ctx, 910, 1);
 
-        it('should split batch into units and mark PROCESSED', async () => {
+        await contract.dispatchProcessedBatchToFrozenTransport(ctx, 910001, 't5', 5);
+        await contract.acceptProcessedBatchForFrozenTransport(ctx, 910001, 't6');
+        await contract.addIoTTraceForProcessedBatch(ctx, 910001, '1.3', '2.4', '-3.5');
+        await contract.deliverProcessedBatchToRetail(ctx, 910001, 15, 't7');
+        await contract.putProcessedBatchOnSale(ctx, 910001, 't8');
+        await contract.sellProcessedBatch(ctx, 910001, 't9');
 
-            const batch = {
-                id: 200,
-                status: 'SLAUGHTERING'
-            };
-
-            ctx.stub.getState.resolves(Buffer.from(JSON.stringify(batch)));
-
-            const units = await contract.createProcessedBatch(
-                ctx,
-                200,
-                2,
-                '{}'
-            );
-
-            expect(units.length).to.equal(2);
-            sinon.assert.called(ctx.stub.putState);
-        });
-
-        it('should reject if batch not in SLAUGHTERING', async () => {
-
-            const batch = {
-                id: 200,
-                status: 'CREATED'
-            };
-
-            ctx.stub.getState.resolves(Buffer.from(JSON.stringify(batch)));
-
-            await expect(
-                contract.createProcessedBatch(ctx, 200, 2, '{}')
-            ).to.be.rejectedWith('Invalid state');
-        });
-
+        const traces = await contract.queryTraceOfBatch(ctx, 910);
+        expect(traces.length).to.be.greaterThan(0);
     });
-
-    /* ---------------------------------------------------------- */
-    /* ---------------------- rejectBatch ----------------------- */
-    /* ---------------------------------------------------------- */
-
-    describe('#rejectBatch', () => {
-
-        it('should mark batch REJECTED', async () => {
-
-            const batch = { id: 300, status: 'CREATED' };
-
-            ctx.stub.getState.resolves(Buffer.from(JSON.stringify(batch)));
-
-            await contract.rejectBatch(ctx, 300, 'Health issue', 1);
-
-            sinon.assert.called(ctx.stub.putState);
-        });
-
-    });
-
 });

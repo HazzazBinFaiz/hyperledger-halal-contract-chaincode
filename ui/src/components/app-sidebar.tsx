@@ -42,6 +42,14 @@ const data = {
                     title: "List Batches",
                     url: "/batch",
                 },
+                {
+                    title: "Batch Trace",
+                    url: "/batch/trace",
+                },
+                {
+                    title: "Trace By QR",
+                    url: "/trace-by-qr",
+                },
             ],
         },
         {
@@ -68,6 +76,10 @@ const data = {
                     title: "Process",
                     url: "/batch/move/process",
                 },
+                {
+                    title: "IoT Trace",
+                    url: "/batch/move/iot",
+                },
             ],
         },
         {
@@ -93,6 +105,10 @@ const data = {
                 {
                     title: "Mark Sold",
                     url: "/batch/move/processed/sell",
+                },
+                {
+                    title: "IoT Trace",
+                    url: "/batch/move/processed/iot",
                 },
                 {
                     title: "Processed Trace",

@@ -15,6 +15,16 @@ type Props = {
 
 export default function BatchMoveTable({batches, selected, onSelect}: Props) {
     const router = useRouter()
+
+    const toggle = (batchId: number) => {
+        if (selected.includes(batchId)) {
+            onSelect(selected.filter((id) => id !== batchId))
+            return
+        }
+
+        onSelect([...selected, batchId])
+    }
+
     return (
         <Table>
             <TableHeader>
@@ -39,7 +49,7 @@ export default function BatchMoveTable({batches, selected, onSelect}: Props) {
                         <TableCell>
                             <Checkbox
                                 checked={selected.includes(batch.id)}
-                                onCheckedChange={() => onSelect([...selected, batch.id])}
+                                onCheckedChange={() => toggle(batch.id)}
                             />
                         </TableCell>
                         <TableCell>{batch.id}</TableCell>
