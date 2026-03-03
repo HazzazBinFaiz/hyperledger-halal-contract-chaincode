@@ -17,7 +17,7 @@ export default function SellProcessedPageClient({ units }: { units: ProcessedBat
     }) => {
         if (!selected.length) {
             toast("Select processed unit")
-            return
+            return false
         }
 
         for (const unitId of selected) {
@@ -25,7 +25,9 @@ export default function SellProcessedPageClient({ units }: { units: ProcessedBat
         }
 
         toast(`Processed unit ${selected.join(",")} moved to SOLD`)
+        setSelected([])
         router.refresh()
+        return true
     }
 
     return (

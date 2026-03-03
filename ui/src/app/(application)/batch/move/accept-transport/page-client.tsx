@@ -12,8 +12,15 @@ export default function AcceptTransportPageClient({ batches }: { batches: Poultr
 
     const router = useRouter()
 
-    const handleSubmit = async (data: any) => {
-        if (!selected.length) return toast("Select batch")
+    const handleSubmit = async (data: {
+        acceptance_time: string
+        number_of_chicken: number
+        extra_info: Record<string, string>
+    }) => {
+        if (!selected.length) {
+            toast("Select batch")
+            return false
+        }
 
         for (const batch of selected) {
             await acceptBatchForTransport(
@@ -26,7 +33,9 @@ export default function AcceptTransportPageClient({ batches }: { batches: Poultr
 
         toast(`Batch ${selected.join(",")} moved to IN_TRANSPORT`)
 
+        setSelected([])
         router.refresh()
+        return true
     }
 
     return (

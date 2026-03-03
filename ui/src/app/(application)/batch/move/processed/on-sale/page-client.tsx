@@ -17,7 +17,7 @@ export default function PutProcessedOnSalePageClient({ units }: { units: Process
     }) => {
         if (!selected.length) {
             toast("Select processed unit")
-            return
+            return false
         }
 
         for (const unitId of selected) {
@@ -25,7 +25,9 @@ export default function PutProcessedOnSalePageClient({ units }: { units: Process
         }
 
         toast(`Processed unit ${selected.join(",")} moved to ON_SALE`)
+        setSelected([])
         router.refresh()
+        return true
     }
 
     return (

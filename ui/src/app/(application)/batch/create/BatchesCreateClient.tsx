@@ -44,7 +44,14 @@ type ExtraRow = {
 }
 
 export default function BatchesCreateClient() {
+    const defaultFormValues: FormValues = {
+        farm_id: 0,
+        age_of_chicken: 0,
+        breed_type: "",
+        ideal_temperature: 0,
+    }
     const [farms, setFarms] = useState<Farm[]>([])
+    const [selectedFarmId, setSelectedFarmId] = useState("")
     const [isPending, startTransition] = useTransition()
     const router = useRouter()
     const [extraRows, setExtraRows] = useState<ExtraRow[]>([
@@ -59,12 +66,7 @@ export default function BatchesCreateClient() {
         formState: { errors },
     } = useForm<FormValues>({
         resolver: zodResolver(schema),
-        defaultValues: {
-            farm_id: 0,
-            age_of_chicken: 0,
-            breed_type: "",
-            ideal_temperature: 0,
-        },
+        defaultValues: defaultFormValues,
     })
 
     useEffect(() => {
@@ -92,7 +94,8 @@ export default function BatchesCreateClient() {
                     extra_info: extraObject,
                 })
 
-                reset()
+                reset(defaultFormValues)
+                setSelectedFarmId("")
                 setExtraRows([{ key: "", value: "", type: "text", boolValue: false, removable: true, lockedType: true }])
 
                 toast("Batch Created", {
@@ -120,9 +123,11 @@ export default function BatchesCreateClient() {
                                 <Label>Farm</Label>
 
                                 <Select
-                                    onValueChange={(value) =>
+                                    value={selectedFarmId}
+                                    onValueChange={(value) => {
+                                        setSelectedFarmId(value)
                                         setValue("farm_id", Number(value), { shouldValidate: true })
-                                    }
+                                    }}
                                 >
                                     <SelectTrigger className="mt-2 w-full">
                                         <SelectValue placeholder="Select Farm" />

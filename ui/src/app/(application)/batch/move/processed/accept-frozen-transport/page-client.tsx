@@ -17,7 +17,7 @@ export default function AcceptProcessedFrozenTransportPageClient({ units }: { un
     }) => {
         if (!selected.length) {
             toast("Select processed unit")
-            return
+            return false
         }
 
         for (const unitId of selected) {
@@ -25,7 +25,9 @@ export default function AcceptProcessedFrozenTransportPageClient({ units }: { un
         }
 
         toast(`Processed unit ${selected.join(",")} moved to IN_FROZEN_TRANSPORT`)
+        setSelected([])
         router.refresh()
+        return true
     }
 
     return (

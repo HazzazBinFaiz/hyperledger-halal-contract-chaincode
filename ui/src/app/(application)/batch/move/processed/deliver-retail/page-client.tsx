@@ -25,7 +25,7 @@ export default function DeliverProcessedRetailPageClient({
     }) => {
         if (!selected.length) {
             toast("Select processed unit")
-            return
+            return false
         }
 
         for (const unitId of selected) {
@@ -38,7 +38,9 @@ export default function DeliverProcessedRetailPageClient({
         }
 
         toast(`Processed unit ${selected.join(",")} delivered to retail`)
+        setSelected([])
         router.refresh()
+        return true
     }
 
     return (

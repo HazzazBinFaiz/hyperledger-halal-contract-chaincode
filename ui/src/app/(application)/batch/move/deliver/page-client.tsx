@@ -6,14 +6,22 @@ import BatchMoveForm from "@/components/BatchMoveForm"
 import { PoultryBatch, deliverBatch } from "@/lib/actions/batch"
 import { toast } from "sonner"
 import {useRouter} from "next/navigation";
-import {listSlaughterHouses, SlaughterHouse} from "@/lib/actions/slaughter-house";
+import { SlaughterHouse } from "@/lib/actions/slaughter-house";
 
 export default function DeliverPageClient({ batches, slaughterHouses }: { batches: PoultryBatch[], slaughterHouses: SlaughterHouse[] }) {
     const [selected, setSelected] = useState<number[]>([])
     const router = useRouter()
 
-    const handleSubmit = async (data: any) => {
-        if (!selected.length) return toast("Select batch")
+    const handleSubmit = async (data: {
+        slaughter_house_id: string
+        delivery_time: string
+        number_of_chicken: number
+        extra_info: Record<string, string>
+    }) => {
+        if (!selected.length) {
+            toast("Select batch")
+            return false
+        }
 
         for (const batch of selected) {
             await deliverBatch(
@@ -27,7 +35,9 @@ export default function DeliverPageClient({ batches, slaughterHouses }: { batche
 
         toast(`Batch ${selected.join(",")} delivered to slaughterhouse`)
 
+        setSelected([])
         router.refresh()
+        return true
     }
 
     return (

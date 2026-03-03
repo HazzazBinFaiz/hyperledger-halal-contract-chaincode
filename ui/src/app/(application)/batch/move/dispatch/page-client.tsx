@@ -11,17 +11,26 @@ export default function DispatchPageClient({ batches }: { batches: PoultryBatch[
     const [selected, setSelected] = useState<number[]>([])
     const router = useRouter()
 
-    const handleSubmit = async (data: any) => {
-        if (selected.length === 0) return toast("Select batch");
+    const handleSubmit = async (data: {
+        dispatch_time: string
+        number_of_chicken: string
+        room_temperature: string
+        extra_info: Record<string, string>
+    }) => {
+        if (selected.length === 0) {
+            toast("Select batch")
+            return false
+        }
         for (const batch of selected) {
             await dispatchBatchToTransport(batch, data.dispatch_time as string, data.number_of_chicken as string, data.room_temperature as string, data.extra_info);
         }
 
         toast(`Batch ${selected.join(',')} moved to WAITING_FOR_TRANSPORT`)
 
+        setSelected([])
         router.refresh()
 
-        return;
+        return true
     }
 
     return (

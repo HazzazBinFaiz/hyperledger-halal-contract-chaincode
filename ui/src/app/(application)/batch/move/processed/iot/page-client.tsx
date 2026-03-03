@@ -19,7 +19,7 @@ export default function ProcessedBatchIotTracePageClient({ units }: { units: Pro
   }) => {
     if (!selected.length) {
       toast("Select processed unit")
-      return
+      return false
     }
 
     for (const unitId of selected) {
@@ -33,7 +33,9 @@ export default function ProcessedBatchIotTracePageClient({ units }: { units: Pro
     }
 
     toast(`IoT trace added for processed unit ${selected.join(",")}`)
+    setSelected([])
     router.refresh()
+    return true
   }
 
   return (

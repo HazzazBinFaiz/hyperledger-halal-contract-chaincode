@@ -18,7 +18,10 @@ export default function AcceptSlaughterPageClient({ batches, slaughterHouses }: 
         number_of_chicken: number
         extra_info: Record<string, string>
     }) => {
-        if (!selected.length) return toast("Select batch")
+        if (!selected.length) {
+            toast("Select batch")
+            return false
+        }
 
         for (const batch of selected) {
             await acceptBatchForSlaughtering(
@@ -32,7 +35,9 @@ export default function AcceptSlaughterPageClient({ batches, slaughterHouses }: 
 
         toast(`Batch ${selected.join(",")} moved to SLAUGHTERING`)
 
+        setSelected([])
         router.refresh()
+        return true
     }
 
     return (

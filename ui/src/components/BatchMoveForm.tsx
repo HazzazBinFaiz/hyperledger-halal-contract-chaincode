@@ -37,7 +37,7 @@ type Field = {
 type Props = {
   title: string
   fields: Field[]
-  onSubmit: (data: Record<string, unknown>) => Promise<void>
+  onSubmit: (data: Record<string, unknown>) => Promise<boolean | void>
 }
 
 type ExtraRow = {
@@ -106,7 +106,7 @@ export default function BatchMoveForm({ title, fields, onSubmit }: Props) {
     }, {})
   }, [fields])
 
-  const { register, handleSubmit } = useForm<Record<string, string>>({ defaultValues })
+  const { register, handleSubmit, reset } = useForm<Record<string, string>>({ defaultValues })
 
   const submitHandler = (values: Record<string, string>) => {
     const extra_info = extraRows
@@ -126,7 +126,14 @@ export default function BatchMoveForm({ title, fields, onSubmit }: Props) {
       extra_info,
     }
 
-    startTransition(() => onSubmit(payload))
+    startTransition(() => {
+      void (async () => {
+        const result = await onSubmit(payload)
+        if (result === false) return
+        reset(defaultValues)
+        setExtraRows(defaultExtraRows)
+      })()
+    })
   }
 
   return (

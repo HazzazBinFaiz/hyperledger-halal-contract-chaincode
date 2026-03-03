@@ -15,7 +15,7 @@ type Props = {
     latitude: string
     temperature: string
     extra_info: Record<string, string>
-  }) => Promise<void>
+  }) => Promise<boolean | void>
 }
 
 type ExtraRow = {
@@ -27,13 +27,12 @@ type ExtraRow = {
 }
 
 export default function IotTraceForm({ title, onSubmit }: Props) {
+  const defaultExtraRows: ExtraRow[] = [{ key: "", value: "", type: "text", boolValue: false, removable: true }]
   const [longitude, setLongitude] = useState("")
   const [latitude, setLatitude] = useState("")
   const [temperature, setTemperature] = useState("")
   const [isPending, startTransition] = useTransition()
-  const [extraRows, setExtraRows] = useState<ExtraRow[]>([
-    { key: "", value: "", type: "text", boolValue: false, removable: true },
-  ])
+  const [extraRows, setExtraRows] = useState<ExtraRow[]>(defaultExtraRows)
 
   const mapCoordinates = useMemo(() => {
     if (!latitude || !longitude) return undefined
@@ -55,7 +54,16 @@ export default function IotTraceForm({ title, onSubmit }: Props) {
         return acc
       }, {})
 
-    startTransition(() => onSubmit({ longitude, latitude, temperature, extra_info }))
+    startTransition(() => {
+      void (async () => {
+        const result = await onSubmit({ longitude, latitude, temperature, extra_info })
+        if (result === false) return
+        setLongitude("")
+        setLatitude("")
+        setTemperature("")
+        setExtraRows(defaultExtraRows)
+      })()
+    })
   }
 
   return (

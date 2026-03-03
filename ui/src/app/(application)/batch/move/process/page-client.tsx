@@ -15,7 +15,10 @@ export default function ProcessPageClient({ batches }: { batches: PoultryBatch[]
         number_of_split_batches: number
         extra_info: Record<string, string>
     }) => {
-        if (!selected.length) return toast("Select batch")
+        if (!selected.length) {
+            toast("Select batch")
+            return false
+        }
 
         for (const batch of selected) {
             await createProcessedBatch(
@@ -27,7 +30,9 @@ export default function ProcessPageClient({ batches }: { batches: PoultryBatch[]
 
         toast(`Batch ${selected.join(",")} processed`)
 
+        setSelected([])
         router.refresh()
+        return true
     }
 
     return (

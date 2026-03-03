@@ -19,7 +19,7 @@ export default function BatchIotTracePageClient({ batches }: { batches: PoultryB
   }) => {
     if (!selected.length) {
       toast("Select batch")
-      return
+      return false
     }
 
     for (const batchId of selected) {
@@ -33,7 +33,9 @@ export default function BatchIotTracePageClient({ batches }: { batches: PoultryB
     }
 
     toast(`IoT trace added for batch ${selected.join(",")}`)
+    setSelected([])
     router.refresh()
+    return true
   }
 
   return (
