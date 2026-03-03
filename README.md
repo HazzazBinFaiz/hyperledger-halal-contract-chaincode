@@ -3,12 +3,13 @@
 ## Clone the repository
 
 ```
+cd fabric-samples
 git clone git@github.com:HazzazBinFaiz/hyperledger-halal-contract-chaincode.git halal-contract
 ```
 ## Bring up the test network
 
 ```
-cd fabric-samples/test-network
+cd test-network
 ```
 
 Run the following command to start the test network:
@@ -33,7 +34,21 @@ Since the channel has two members, this implies that we'll need to get peer endo
 
 Now you are ready to call the deployed smart contract via peer CLI calls. But let's first create the client identities for our scenario.
 
-## Invoking the contract
+## Running the UI
+
+Now install UI dependencies
+
+```
+cd ../halal-contract/ui
+npm i
+```
+
+After installing dependencies, run the UI dev server
+```
+npm run dev
+```
+
+## Invoking the contract from CLI
 
 Shift back to the Org1 terminal, we'll set the following environment variables to operate the `peer` CLI as the minter identity from Org1.
 ```

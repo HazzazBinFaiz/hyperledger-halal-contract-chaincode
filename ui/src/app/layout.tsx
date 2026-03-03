@@ -15,8 +15,8 @@ const robotoMono = Roboto_Mono({
 });
 
 export const metadata: Metadata = {
-  title: process.env.NEXT_PUBLIC_APP_NAME,
-  description: process.env.NEXT_PUBLIC_APP_DESCRIPTION,
+  title: process.env.NEXT_PUBLIC_APP_NAME ?? 'Hall Tracer',
+  description: process.env.NEXT_PUBLIC_APP_DESCRIPTION ?? 'Trace halal meat',
 };
 
 export default function RootLayout({
