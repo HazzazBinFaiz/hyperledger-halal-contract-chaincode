@@ -9,8 +9,7 @@ const BATCH_STATUS = Object.freeze({
     DELIVERED_TO_SLAUGHTERHOUSE: 'DELIVERED_TO_SLAUGHTERHOUSE',
     SLAUGHTERING: 'SLAUGHTERING',
     PROCESSED: 'PROCESSED',
-    REJECTED: 'REJECTED',
-    RECALLED: 'RECALLED'
+    REJECTED: 'REJECTED'
 });
 
 const UNIT_STATUS = Object.freeze({
@@ -20,9 +19,7 @@ const UNIT_STATUS = Object.freeze({
     DELIVERED_TO_RETAIL: 'DELIVERED_TO_RETAIL',
     ON_SALE: 'ON_SALE',
     SOLD: 'SOLD',
-    REJECTED: 'REJECTED',
-    RECALLED: 'RECALLED',
-    DESTROYED: 'DESTROYED'
+    REJECTED: 'REJECTED'
 });
 
 class HalalTraceabilityContract extends Contract {
@@ -382,7 +379,6 @@ class HalalTraceabilityContract extends Contract {
         const unit = await this.getProcessedBatchById(ctx, unit_id);
         this._assert(unit, 'Processed batch not found');
         this._assert(unit.status !== UNIT_STATUS.SOLD, 'Cannot reject sold unit');
-        this._assert(unit.status !== UNIT_STATUS.DESTROYED, 'Cannot reject destroyed unit');
 
         unit.status = UNIT_STATUS.REJECTED;
         await this._putState(ctx, this._processedKey(ctx, unit_id), unit);
@@ -397,46 +393,6 @@ class HalalTraceabilityContract extends Contract {
         );
     }
 
-    async recallProcessedBatch(ctx, unit_id, reason, authority_id) {
-        const unit = await this.getProcessedBatchById(ctx, unit_id);
-        this._assert(unit, 'Processed batch not found');
-        this._assert(unit.status !== UNIT_STATUS.SOLD, 'Cannot recall sold unit');
-        this._assert(unit.status !== UNIT_STATUS.DESTROYED, 'Cannot recall destroyed unit');
-
-        unit.status = UNIT_STATUS.RECALLED;
-        await this._putState(ctx, this._processedKey(ctx, unit_id), unit);
-
-        await this._addTrace(
-            ctx,
-            unit.original_batch_id,
-            unit.unit_id,
-            authority_id,
-            `Processed unit recalled by authority. Reason: ${reason}`,
-            { reason }
-        );
-    }
-
-    async destroyProcessedBatch(ctx, unit_id, reason, actor_id) {
-        const unit = await this.getProcessedBatchById(ctx, unit_id);
-        this._assert(unit, 'Processed batch not found');
-        this._assert(
-            unit.status === UNIT_STATUS.REJECTED || unit.status === UNIT_STATUS.RECALLED,
-            'Only rejected/recalled unit can be destroyed'
-        );
-
-        unit.status = UNIT_STATUS.DESTROYED;
-        await this._putState(ctx, this._processedKey(ctx, unit_id), unit);
-
-        await this._addTrace(
-            ctx,
-            unit.original_batch_id,
-            unit.unit_id,
-            actor_id,
-            `Processed unit destroyed. Reason: ${reason}`,
-            { reason }
-        );
-    }
-
     async rejectBatch(ctx, batch_id, reason, actor_id) {
         const batch = await this.getBatchById(ctx, batch_id);
         this._assert(batch, 'Batch not found');
@@ -445,16 +401,6 @@ class HalalTraceabilityContract extends Contract {
         await this._putState(ctx, this._batchKey(ctx, batch_id), batch);
 
         await this._addTrace(ctx, batch_id, null, actor_id, `Batch rejected. Reason: ${reason}`, { reason });
-    }
-
-    async recallBatch(ctx, batch_id, reason, authority_id) {
-        const batch = await this.getBatchById(ctx, batch_id);
-        this._assert(batch.status !== BATCH_STATUS.PROCESSED, 'Cannot recall processed batch directly');
-
-        batch.status = BATCH_STATUS.RECALLED;
-        await this._putState(ctx, this._batchKey(ctx, batch_id), batch);
-
-        await this._addTrace(ctx, batch_id, null, authority_id, `Batch recalled by authority. Reason: ${reason}`, { reason });
     }
 
     async queryTraceOfBatch(ctx, batch_id) {
