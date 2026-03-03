@@ -166,6 +166,11 @@ export async function getProcessedBatchesByStatus(status: string): Promise<Proce
     return units.filter((unit) => unit.status === status)
 }
 
+export async function getProcessedBatchesByBatchId(batch_id: number): Promise<ProcessedBatch[]> {
+    const units = await getAllProcessedBatches()
+    return units.filter((unit) => unit.original_batch_id === batch_id)
+}
+
 export async function dispatchProcessedBatchToFrozenTransport(
     unit_id: number,
     dispatch_time: string,
@@ -274,6 +279,19 @@ export async function getTraceOfProcessedBatch(unit_id: number): Promise<Poultry
 
     const traces = await getTraceOfBatch(unit.original_batch_id)
     return traces.filter((trace) => trace.unit_id === 0 || trace.unit_id === unit_id)
+}
+
+export async function getBatchOnlyTrace(batch_id: number): Promise<PoultryBatchTrace[]> {
+    const traces = await getTraceOfBatch(batch_id)
+    return traces.filter((trace) => trace.unit_id === 0)
+}
+
+export async function getUnitOnlyTrace(unit_id: number): Promise<PoultryBatchTrace[]> {
+    const unit = await getProcessedBatchById(unit_id)
+    if (!unit) return []
+
+    const traces = await getTraceOfBatch(unit.original_batch_id)
+    return traces.filter((trace) => trace.unit_id === unit_id)
 }
 
 export async function addIoTTraceForBatch(

@@ -1,14 +1,18 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
-import CompactTraceTimeline from "@/components/trace/compact-trace-timeline"
 import {
+  getBatchById,
+  getBatchOnlyTrace,
   getProcessedBatchById,
-  getTraceOfProcessedBatch,
+  getProcessedBatchesByBatchId,
+  getTraceOfBatch,
+  PoultryBatch,
   PoultryBatchTrace,
   ProcessedBatch,
 } from "@/lib/actions/batch"
+import { BatchTraceView, UnitTraceView } from "@/components/trace/trace-views"
 
 type BarcodeLike = {
   rawValue?: string
@@ -20,11 +24,16 @@ type BarcodeDetectorLike = {
 
 type BarcodeDetectorCtor = new (options?: { formats?: string[] }) => BarcodeDetectorLike
 
-function parseUnitId(raw: string): string | null {
+type TraceMode = "batch" | "unit" | null
+
+function parseId(raw: string): string | null {
   const trimmed = raw.trim()
   if (!trimmed) return null
 
   if (/^\d+$/.test(trimmed)) return trimmed
+
+  const batchMatch = trimmed.match(/batch[_-]?id\s*[:=]\s*(\d+)/i)
+  if (batchMatch?.[1]) return batchMatch[1]
 
   const unitMatch = trimmed.match(/unit[_-]?id\s*[:=]\s*(\d+)/i)
   if (unitMatch?.[1]) return unitMatch[1]
@@ -36,12 +45,27 @@ function parseUnitId(raw: string): string | null {
 export default function TraceByQrPage() {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
-  const [unitId, setUnitId] = useState("")
+
+  const [traceId, setTraceId] = useState("")
   const [loading, setLoading] = useState(false)
   const [isScanning, setIsScanning] = useState(false)
   const [scanMessage, setScanMessage] = useState("Camera is off")
+
+  const [mode, setMode] = useState<TraceMode>(null)
+  const [batch, setBatch] = useState<PoultryBatch | null>(null)
+  const [batchTraces, setBatchTraces] = useState<PoultryBatchTrace[]>([])
+  const [batchUnits, setBatchUnits] = useState<ProcessedBatch[]>([])
   const [unit, setUnit] = useState<ProcessedBatch | null>(null)
-  const [traces, setTraces] = useState<PoultryBatchTrace[]>([])
+  const [unitTraces, setUnitTraces] = useState<PoultryBatchTrace[]>([])
+
+  const resetTrace = () => {
+    setMode(null)
+    setBatch(null)
+    setBatchTraces([])
+    setBatchUnits([])
+    setUnit(null)
+    setUnitTraces([])
+  }
 
   const stopCamera = () => {
     if (streamRef.current) {
@@ -57,32 +81,55 @@ export default function TraceByQrPage() {
     setScanMessage("Camera is off")
   }
 
-  const fetchTraceByUnitId = async (targetId: string) => {
+  const fetchTraceById = useCallback(async (targetId: string) => {
     if (!targetId) {
-      toast("Enter or scan unit ID")
+      toast("Enter or scan batch/unit ID")
       return
     }
 
     setLoading(true)
     try {
-      const unitData = await getProcessedBatchById(Number(targetId))
-      if (!unitData) {
+      const id = Number(targetId)
+      const batchData = await getBatchById(id)
+
+      if (batchData) {
+        const [traces, units] = await Promise.all([
+          getBatchOnlyTrace(id),
+          getProcessedBatchesByBatchId(id),
+        ])
+
+        setMode("batch")
+        setBatch(batchData)
+        setBatchTraces(traces.sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime()))
+        setBatchUnits(units)
         setUnit(null)
-        setTraces([])
-        toast("Processed unit not found")
+        setUnitTraces([])
         return
       }
 
-      setUnit(unitData)
-      const timeline = await getTraceOfProcessedBatch(Number(targetId))
-      setTraces(timeline.sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime()))
+      const unitData = await getProcessedBatchById(id)
+      if (unitData) {
+        const all = await getTraceOfBatch(unitData.original_batch_id)
+        const sorted = all.sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime())
+
+        setMode("unit")
+        setUnit(unitData)
+        setBatchTraces(sorted.filter((trace) => trace.unit_id === 0))
+        setUnitTraces(sorted.filter((trace) => trace.unit_id === unitData.unit_id))
+        setBatch(null)
+        setBatchUnits([])
+        return
+      }
+
+      resetTrace()
+      toast("No batch or processed unit found for this ID")
     } catch (error) {
       console.error(error)
       toast("Failed to fetch trace")
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   const startCamera = async () => {
     const BarcodeDetectorImpl = (globalThis as unknown as { BarcodeDetector?: BarcodeDetectorCtor }).BarcodeDetector
@@ -129,23 +176,23 @@ export default function TraceByQrPage() {
         if (!codes.length) return
 
         const raw = codes[0]?.rawValue ?? ""
-        const parsed = parseUnitId(raw)
+        const parsed = parseId(raw)
         if (!parsed) {
-          setScanMessage("QR found but no unit ID detected")
+          setScanMessage("QR found but no numeric ID detected")
           return
         }
 
-        setUnitId(parsed)
-        setScanMessage(`Scanned unit ID: ${parsed}`)
+        setTraceId(parsed)
+        setScanMessage(`Scanned ID: ${parsed}`)
         stopCamera()
-        await fetchTraceByUnitId(parsed)
+        await fetchTraceById(parsed)
       } catch {
         // ignore frame-level detection errors
       }
     }, 700)
 
     return () => clearInterval(timer)
-  }, [isScanning])
+  }, [fetchTraceById, isScanning])
 
   useEffect(() => {
     return () => stopCamera()
@@ -159,13 +206,13 @@ export default function TraceByQrPage() {
         <div className="flex flex-wrap gap-2">
           <input
             type="number"
-            value={unitId}
-            onChange={(e) => setUnitId(e.target.value)}
-            placeholder="Enter unit ID"
+            value={traceId}
+            onChange={(e) => setTraceId(e.target.value)}
+            placeholder="Enter batch or unit ID"
             className="h-10 min-w-[220px] flex-1 rounded-md border px-3 text-sm"
           />
           <button
-            onClick={() => fetchTraceByUnitId(unitId)}
+            onClick={() => fetchTraceById(traceId)}
             className="h-10 rounded-md bg-slate-900 px-4 text-sm font-medium text-white"
           >
             Trace
@@ -196,22 +243,15 @@ export default function TraceByQrPage() {
 
       {loading && <p className="text-sm text-muted-foreground">Loading trace...</p>}
 
-      {unit && (
-        <section className="rounded-xl border bg-gradient-to-r from-white to-slate-50 p-4 shadow-sm">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-slate-900">Processed Unit #{unit.unit_id}</h2>
-            <span className="rounded bg-cyan-700 px-2 py-1 text-xs font-semibold text-white">{unit.status}</span>
-          </div>
-          <div className="grid gap-2 text-sm text-slate-700 md:grid-cols-3">
-            <div><b>Original Batch:</b> {unit.original_batch_id}</div>
-            <div><b>Retail Shop:</b> {unit.retail_shop_id ?? "-"}</div>
-            <div><b>Created:</b> {new Date(unit.created_at).toLocaleString()}</div>
-            <div><b>Weight:</b> {unit.weight}</div>
-          </div>
-        </section>
+      {!loading && mode === "batch" && batch && (
+        <BatchTraceView batch={batch} traces={batchTraces} units={batchUnits} />
       )}
 
-      {!loading && <CompactTraceTimeline traces={traces} focusUnitId={unit?.unit_id} />}
+      {!loading && mode === "unit" && unit && (
+        <UnitTraceView unit={unit} batchTraces={batchTraces} unitTraces={unitTraces} />
+      )}
+
+      {!loading && !mode && <p className="text-sm text-muted-foreground">No trace selected.</p>}
     </div>
   )
 }

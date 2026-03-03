@@ -5,7 +5,7 @@ import {Checkbox} from "@/components/ui/checkbox"
 import {PoultryBatch} from "@/lib/actions/batch"
 import {Button} from "@/components/ui/button";
 import {Search} from "lucide-react";
-import {useRouter} from "next/navigation";
+import Link from "next/link";
 
 type Props = {
     batches: PoultryBatch[]
@@ -14,8 +14,6 @@ type Props = {
 }
 
 export default function BatchMoveTable({batches, selected, onSelect}: Props) {
-    const router = useRouter()
-
     const toggle = (batchId: number) => {
         if (selected.includes(batchId)) {
             onSelect(selected.filter((id) => id !== batchId))
@@ -52,18 +50,22 @@ export default function BatchMoveTable({batches, selected, onSelect}: Props) {
                                 onCheckedChange={() => toggle(batch.id)}
                             />
                         </TableCell>
-                        <TableCell>{batch.id}</TableCell>
+                        <TableCell>
+                            <Link href={`/batch/trace?id=${batch.id}`} className="font-medium underline-offset-4 hover:underline">
+                                {batch.id}
+                            </Link>
+                        </TableCell>
                         <TableCell>{batch.farm_id}</TableCell>
                         <TableCell>{batch.status}</TableCell>
                         <TableCell className="text-right">
                             <Button
                                 size="icon"
                                 variant="ghost"
-                                onClick={() =>
-                                    router.push(`/batch/trace/?id=${batch.id}`)
-                                }
+                                asChild
                             >
-                                <Search className="w-4 h-4" />
+                                <Link href={`/batch/trace?id=${batch.id}`}>
+                                    <Search className="w-4 h-4" />
+                                </Link>
                             </Button>
                         </TableCell>
                     </TableRow>

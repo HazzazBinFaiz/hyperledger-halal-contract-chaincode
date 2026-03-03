@@ -5,7 +5,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { ProcessedBatch } from "@/lib/actions/batch"
 import { Button } from "@/components/ui/button"
 import { Search } from "lucide-react"
-import { useRouter } from "next/navigation"
+import Link from "next/link"
 
 type Props = {
     units: ProcessedBatch[]
@@ -14,8 +14,6 @@ type Props = {
 }
 
 export default function ProcessedBatchMoveTable({ units, selected, onSelect }: Props) {
-    const router = useRouter()
-
     const toggle = (unitId: number) => {
         if (selected.includes(unitId)) {
             onSelect(selected.filter((id) => id !== unitId))
@@ -51,16 +49,32 @@ export default function ProcessedBatchMoveTable({ units, selected, onSelect }: P
                                 onCheckedChange={() => toggle(unit.unit_id)}
                             />
                         </TableCell>
-                        <TableCell>{unit.unit_id}</TableCell>
-                        <TableCell>{unit.original_batch_id}</TableCell>
+                        <TableCell>
+                            <Link
+                                href={`/batch/processed/trace?id=${unit.unit_id}`}
+                                className="font-medium underline-offset-4 hover:underline"
+                            >
+                                {unit.unit_id}
+                            </Link>
+                        </TableCell>
+                        <TableCell>
+                            <Link
+                                href={`/batch/trace?id=${unit.original_batch_id}`}
+                                className="underline-offset-4 hover:underline"
+                            >
+                                {unit.original_batch_id}
+                            </Link>
+                        </TableCell>
                         <TableCell>{unit.status}</TableCell>
                         <TableCell className="text-right">
                             <Button
                                 size="icon"
                                 variant="ghost"
-                                onClick={() => router.push(`/batch/processed/trace?id=${unit.unit_id}`)}
+                                asChild
                             >
-                                <Search className="w-4 h-4" />
+                                <Link href={`/batch/processed/trace?id=${unit.unit_id}`}>
+                                    <Search className="w-4 h-4" />
+                                </Link>
                             </Button>
                         </TableCell>
                     </TableRow>

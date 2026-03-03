@@ -3,8 +3,8 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
-import BatchMoveForm from "@/components/BatchMoveForm"
 import BatchMoveTable from "@/components/BatchMoveTable"
+import IotTraceForm from "@/components/iot-trace-form"
 import { addIoTTraceForBatch, PoultryBatch } from "@/lib/actions/batch"
 
 export default function BatchIotTracePageClient({ batches }: { batches: PoultryBatch[] }) {
@@ -38,17 +38,7 @@ export default function BatchIotTracePageClient({ batches }: { batches: PoultryB
 
   return (
     <div className="space-y-6 p-6">
-      <BatchMoveForm
-        title="Add Batch IoT Trace"
-        fields={[
-          { name: "longitude", label: "Longitude", type: "number" },
-          { name: "latitude", label: "Latitude", type: "number" },
-          { name: "temperature", label: "Temperature (°C)", type: "number" },
-          { name: "extra_info", label: "Additional Info", required: false },
-        ]}
-        onSubmit={handleSubmit}
-      />
-
+      <IotTraceForm title="Add Batch IoT Trace" onSubmit={handleSubmit} />
       <BatchMoveTable batches={batches} selected={selected} onSelect={setSelected} />
     </div>
   )

@@ -1,9 +1,8 @@
 "use client"
 
-import { useState,} from "react"
 import { PoultryBatch } from "@/lib/actions/batch"
-import { useRouter } from "next/navigation"
 import { Search,} from "lucide-react"
+import Link from "next/link"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -22,9 +21,6 @@ export default function BatchesClient({
                                       }: {
     initialBatches: PoultryBatch[]
 }) {
-    const [batches, setBatches] = useState(initialBatches)
-    const router = useRouter()
-
     return (
         <div className="flex flex-1 flex-col gap-6 p-6">
             <Card>
@@ -45,16 +41,20 @@ export default function BatchesClient({
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {batches.length === 0 ? (
+                            {initialBatches.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
                                         No batches found
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                batches.map(batch => (
+                                initialBatches.map(batch => (
                                     <TableRow key={batch.id}>
-                                        <TableCell>{batch.id}</TableCell>
+                                        <TableCell>
+                                            <Link href={`/batch/trace?id=${batch.id}`} className="font-medium underline-offset-4 hover:underline">
+                                                {batch.id}
+                                            </Link>
+                                        </TableCell>
                                         <TableCell>{batch.farm_id}</TableCell>
                                         <TableCell>{batch.status}</TableCell>
                                         <TableCell>{batch.breed_type}</TableCell>
@@ -71,11 +71,11 @@ export default function BatchesClient({
                                             <Button
                                                 size="icon"
                                                 variant="ghost"
-                                                onClick={() =>
-                                                    router.push(`/batch/trace/?id=${batch.id}`)
-                                                }
+                                                asChild
                                             >
-                                                <Search className="w-4 h-4" />
+                                                <Link href={`/batch/trace?id=${batch.id}`}>
+                                                    <Search className="w-4 h-4" />
+                                                </Link>
                                             </Button>
                                         </TableCell>
                                     </TableRow>
