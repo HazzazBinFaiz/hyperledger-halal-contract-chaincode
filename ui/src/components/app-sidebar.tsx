@@ -69,6 +69,36 @@ const data = {
                     url: "/batch/move/process",
                 },
             ],
+        },
+        {
+            title: "Move Processed Unit",
+            url: "#",
+            items: [
+                {
+                    title: "Dispatch Frozen",
+                    url: "/batch/move/processed/dispatch",
+                },
+                {
+                    title: "Accept Frozen",
+                    url: "/batch/move/processed/accept-frozen-transport",
+                },
+                {
+                    title: "Deliver Retail",
+                    url: "/batch/move/processed/deliver-retail",
+                },
+                {
+                    title: "Put On Sale",
+                    url: "/batch/move/processed/on-sale",
+                },
+                {
+                    title: "Mark Sold",
+                    url: "/batch/move/processed/sell",
+                },
+                {
+                    title: "Processed Trace",
+                    url: "/batch/processed/trace",
+                },
+            ],
         }
         /*{
           title: "Build Your Application",

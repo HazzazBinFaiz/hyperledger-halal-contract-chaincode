@@ -23,7 +23,7 @@ type ExtraInfoPreset = {
 type Field = {
     name: string
     label: string
-    type?: "text" | "number" | "date" | "select"
+    type?: "text" | "number" | "date" | "datetime-local" | "select"
     required?: boolean
     value?: string
     readOnly?: boolean

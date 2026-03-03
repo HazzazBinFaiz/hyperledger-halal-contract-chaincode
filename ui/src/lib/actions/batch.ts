@@ -17,6 +17,16 @@ export type PoultryBatch = {
   extra_info: Record<string, string>
 }
 
+export type ProcessedBatch = {
+    original_batch_id: number
+    unit_id: number
+    status: string
+    created_at: string
+    weight: number
+    retail_shop_id?: number
+    extra_info: Record<string, string>
+}
+
 const utf8Decoder = new TextDecoder()
 const contract = await getContract();
 
@@ -146,6 +156,90 @@ export async function createProcessedBatch(
     )
 }
 
+export async function getProcessedBatchById(unit_id: number): Promise<ProcessedBatch | null> {
+    const resultBytes = await contract.evaluateTransaction('getProcessedBatchById', unit_id.toString())
+    return JSON.parse(utf8Decoder.decode(resultBytes)) as ProcessedBatch | null
+}
+
+export async function getAllProcessedBatches(): Promise<ProcessedBatch[]> {
+    const resultBytes = await contract.evaluateTransaction('getAllProcessedBatches')
+    return JSON.parse(utf8Decoder.decode(resultBytes)) as ProcessedBatch[]
+}
+
+export async function getProcessedBatchesByStatus(status: string): Promise<ProcessedBatch[]> {
+    const units = await getAllProcessedBatches()
+    return units.filter((unit) => unit.status === status)
+}
+
+export async function dispatchProcessedBatchToFrozenTransport(
+    unit_id: number,
+    dispatch_time: string,
+    room_temperature: number,
+    extra_info: Record<string, string>
+) {
+    await contract.submitTransaction(
+        'dispatchProcessedBatchToFrozenTransport',
+        unit_id.toString(),
+        dispatch_time,
+        room_temperature.toString(),
+        JSON.stringify(extra_info)
+    )
+}
+
+export async function acceptProcessedBatchForFrozenTransport(
+    unit_id: number,
+    acceptance_time: string,
+    extra_info: Record<string, string>
+) {
+    await contract.submitTransaction(
+        'acceptProcessedBatchForFrozenTransport',
+        unit_id.toString(),
+        acceptance_time,
+        JSON.stringify(extra_info)
+    )
+}
+
+export async function deliverProcessedBatchToRetail(
+    unit_id: number,
+    retail_shop_id: number,
+    delivery_time: string,
+    extra_info: Record<string, string>
+) {
+    await contract.submitTransaction(
+        'deliverProcessedBatchToRetail',
+        unit_id.toString(),
+        retail_shop_id.toString(),
+        delivery_time,
+        JSON.stringify(extra_info)
+    )
+}
+
+export async function putProcessedBatchOnSale(
+    unit_id: number,
+    sale_time: string,
+    extra_info: Record<string, string>
+) {
+    await contract.submitTransaction(
+        'putProcessedBatchOnSale',
+        unit_id.toString(),
+        sale_time,
+        JSON.stringify(extra_info)
+    )
+}
+
+export async function sellProcessedBatch(
+    unit_id: number,
+    sold_time: string,
+    extra_info: Record<string, string>
+) {
+    await contract.submitTransaction(
+        'sellProcessedBatch',
+        unit_id.toString(),
+        sold_time,
+        JSON.stringify(extra_info)
+    )
+}
+
 export async function rejectBatch(
     batch_id: number,
     reason: string,
@@ -179,7 +273,7 @@ export type PoultryBatchTrace = {
     datetime: string
     actor_id: number
     action: string
-    extra_info: Record<string, any>
+    extra_info: Record<string, string | number | boolean>
 }
 
 export async function getTraceOfBatch(batch_id: number): Promise<PoultryBatchTrace[]> {
@@ -187,7 +281,15 @@ export async function getTraceOfBatch(batch_id: number): Promise<PoultryBatchTra
     return JSON.parse(utf8Decoder.decode(resultBytes)) as PoultryBatchTrace[]
 }
 
-export async function getBatchById(batch_id: number): Promise<PoultryBatchTrace[]> {
+export async function getBatchById(batch_id: number): Promise<PoultryBatch | null> {
     const resultBytes = await contract.evaluateTransaction('getBatchById', batch_id.toString())
-    return JSON.parse(utf8Decoder.decode(resultBytes)) as PoultryBatchTrace[]
+    return JSON.parse(utf8Decoder.decode(resultBytes)) as PoultryBatch | null
+}
+
+export async function getTraceOfProcessedBatch(unit_id: number): Promise<PoultryBatchTrace[]> {
+    const unit = await getProcessedBatchById(unit_id)
+    if (!unit) return []
+
+    const traces = await getTraceOfBatch(unit.original_batch_id)
+    return traces.filter((trace) => trace.unit_id === unit_id)
 }

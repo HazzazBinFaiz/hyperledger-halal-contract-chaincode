@@ -279,6 +279,164 @@ class HalalTraceabilityContract extends Contract {
         return units;
     }
 
+    async getProcessedBatchById(ctx, unit_id) {
+        return this._getState(ctx, this._processedKey(ctx, unit_id));
+    }
+
+    async getAllProcessedBatches(ctx) {
+        return this._getByPartial(ctx, 'ProcessedBatch');
+    }
+
+    async dispatchProcessedBatchToFrozenTransport(ctx, unit_id, dispatch_time, room_temperature, extra_info) {
+        const unit = await this.getProcessedBatchById(ctx, unit_id);
+        this._assert(unit, 'Processed batch not found');
+        this._assert(unit.status === UNIT_STATUS.CREATED, 'Invalid state');
+
+        unit.status = UNIT_STATUS.WAITING_FOR_FROZEN_TRANSPORT;
+        await this._putState(ctx, this._processedKey(ctx, unit_id), unit);
+
+        await this._addTrace(
+            ctx,
+            unit.original_batch_id,
+            unit.unit_id,
+            0,
+            `Processed unit dispatched at ${dispatch_time}, temperature ${room_temperature}°C`,
+            JSON.parse(extra_info || '{}')
+        );
+    }
+
+    async acceptProcessedBatchForFrozenTransport(ctx, unit_id, acceptance_time, extra_info) {
+        const unit = await this.getProcessedBatchById(ctx, unit_id);
+        this._assert(unit, 'Processed batch not found');
+        this._assert(unit.status === UNIT_STATUS.WAITING_FOR_FROZEN_TRANSPORT, 'Invalid state');
+
+        unit.status = UNIT_STATUS.IN_FROZEN_TRANSPORT;
+        await this._putState(ctx, this._processedKey(ctx, unit_id), unit);
+
+        await this._addTrace(
+            ctx,
+            unit.original_batch_id,
+            unit.unit_id,
+            0,
+            `Processed unit accepted for frozen transport at ${acceptance_time}`,
+            JSON.parse(extra_info || '{}')
+        );
+    }
+
+    async deliverProcessedBatchToRetail(ctx, unit_id, retail_shop_id, delivery_time, extra_info) {
+        const unit = await this.getProcessedBatchById(ctx, unit_id);
+        this._assert(unit, 'Processed batch not found');
+        this._assert(unit.status === UNIT_STATUS.IN_FROZEN_TRANSPORT, 'Invalid state');
+
+        unit.status = UNIT_STATUS.DELIVERED_TO_RETAIL;
+        unit.retail_shop_id = +retail_shop_id;
+        await this._putState(ctx, this._processedKey(ctx, unit_id), unit);
+
+        await this._addTrace(
+            ctx,
+            unit.original_batch_id,
+            unit.unit_id,
+            0,
+            `Processed unit delivered to retail shop ${retail_shop_id} at ${delivery_time}`,
+            JSON.parse(extra_info || '{}')
+        );
+    }
+
+    async putProcessedBatchOnSale(ctx, unit_id, sale_time, extra_info) {
+        const unit = await this.getProcessedBatchById(ctx, unit_id);
+        this._assert(unit, 'Processed batch not found');
+        this._assert(unit.status === UNIT_STATUS.DELIVERED_TO_RETAIL, 'Invalid state');
+
+        unit.status = UNIT_STATUS.ON_SALE;
+        await this._putState(ctx, this._processedKey(ctx, unit_id), unit);
+
+        await this._addTrace(
+            ctx,
+            unit.original_batch_id,
+            unit.unit_id,
+            0,
+            `Processed unit put on sale at ${sale_time}`,
+            JSON.parse(extra_info || '{}')
+        );
+    }
+
+    async sellProcessedBatch(ctx, unit_id, sold_time, extra_info) {
+        const unit = await this.getProcessedBatchById(ctx, unit_id);
+        this._assert(unit, 'Processed batch not found');
+        this._assert(unit.status === UNIT_STATUS.ON_SALE, 'Invalid state');
+
+        unit.status = UNIT_STATUS.SOLD;
+        await this._putState(ctx, this._processedKey(ctx, unit_id), unit);
+
+        await this._addTrace(
+            ctx,
+            unit.original_batch_id,
+            unit.unit_id,
+            0,
+            `Processed unit sold at ${sold_time}`,
+            JSON.parse(extra_info || '{}')
+        );
+    }
+
+    async rejectProcessedBatch(ctx, unit_id, reason, actor_id) {
+        const unit = await this.getProcessedBatchById(ctx, unit_id);
+        this._assert(unit, 'Processed batch not found');
+        this._assert(unit.status !== UNIT_STATUS.SOLD, 'Cannot reject sold unit');
+        this._assert(unit.status !== UNIT_STATUS.DESTROYED, 'Cannot reject destroyed unit');
+
+        unit.status = UNIT_STATUS.REJECTED;
+        await this._putState(ctx, this._processedKey(ctx, unit_id), unit);
+
+        await this._addTrace(
+            ctx,
+            unit.original_batch_id,
+            unit.unit_id,
+            actor_id,
+            `Processed unit rejected. Reason: ${reason}`,
+            { reason }
+        );
+    }
+
+    async recallProcessedBatch(ctx, unit_id, reason, authority_id) {
+        const unit = await this.getProcessedBatchById(ctx, unit_id);
+        this._assert(unit, 'Processed batch not found');
+        this._assert(unit.status !== UNIT_STATUS.SOLD, 'Cannot recall sold unit');
+        this._assert(unit.status !== UNIT_STATUS.DESTROYED, 'Cannot recall destroyed unit');
+
+        unit.status = UNIT_STATUS.RECALLED;
+        await this._putState(ctx, this._processedKey(ctx, unit_id), unit);
+
+        await this._addTrace(
+            ctx,
+            unit.original_batch_id,
+            unit.unit_id,
+            authority_id,
+            `Processed unit recalled by authority. Reason: ${reason}`,
+            { reason }
+        );
+    }
+
+    async destroyProcessedBatch(ctx, unit_id, reason, actor_id) {
+        const unit = await this.getProcessedBatchById(ctx, unit_id);
+        this._assert(unit, 'Processed batch not found');
+        this._assert(
+            unit.status === UNIT_STATUS.REJECTED || unit.status === UNIT_STATUS.RECALLED,
+            'Only rejected/recalled unit can be destroyed'
+        );
+
+        unit.status = UNIT_STATUS.DESTROYED;
+        await this._putState(ctx, this._processedKey(ctx, unit_id), unit);
+
+        await this._addTrace(
+            ctx,
+            unit.original_batch_id,
+            unit.unit_id,
+            actor_id,
+            `Processed unit destroyed. Reason: ${reason}`,
+            { reason }
+        );
+    }
+
     async rejectBatch(ctx, batch_id, reason, actor_id) {
         const batch = await this.getBatchById(ctx, batch_id);
         this._assert(batch, 'Batch not found');
