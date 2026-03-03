@@ -436,4 +436,25 @@ describe('HalalTraceabilityContract', () => {
         expect(paginated.bookmark).to.equal('bookmark-1');
         expect(paginated.fetched_records_count).to.equal(5);
     });
+
+    it('covers paginated defaults and collectPaginated metadata fallback branches', async () => {
+        await contract.createPoultryBatch(ctx, 1001, 1, '2026-01-01T00:00:00Z', 10, 'Broiler', 21, '{}');
+        const paginatedDefault = await contract.queryTraceOfBatchPaginated(ctx, 1001);
+        expect(paginatedDefault.records).to.have.length(1);
+        expect(paginatedDefault.bookmark).to.equal('');
+        expect(paginatedDefault.fetched_records_count).to.equal(20);
+
+        const iterator = {
+            async next() {
+                return { done: true };
+            },
+            async close() {
+                return;
+            }
+        };
+
+        const fallback = await contract._collectPaginated(iterator);
+        expect(fallback.bookmark).to.equal('');
+        expect(fallback.fetched_records_count).to.equal(0);
+    });
 });

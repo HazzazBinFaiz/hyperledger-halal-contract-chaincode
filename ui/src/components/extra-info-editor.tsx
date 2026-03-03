@@ -1,11 +1,9 @@
 "use client"
 
-import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import { defaultStorageConfig, StorageConfig, storageConfigKey } from "@/lib/storage-config"
 
 type ExtraInfoRow = {
   key: string
@@ -42,17 +40,6 @@ async function sha256Hex(file: File) {
 }
 
 export default function ExtraInfoEditor({ rows, onChange, allowImageAdd = true, allowBooleanAdd, allowFileAdd = true }: Props) {
-  const [storage] = useState<StorageConfig>(() => {
-    if (typeof window === "undefined") return defaultStorageConfig
-    const raw = localStorage.getItem(storageConfigKey)
-    if (!raw) return defaultStorageConfig
-    try {
-      return { ...defaultStorageConfig, ...JSON.parse(raw) }
-    } catch {
-      return defaultStorageConfig
-    }
-  })
-
   const update = (index: number, patch: Partial<ExtraInfoRow>) => {
     onChange(rows.map((row, i) => (i === index ? { ...row, ...patch } : row)))
   }
@@ -70,8 +57,6 @@ export default function ExtraInfoEditor({ rows, onChange, allowImageAdd = true, 
     const formData = new FormData()
     formData.append("file", file)
     formData.append("hash", hash)
-    formData.append("provider", storage.provider)
-    formData.append("localBasePath", storage.localBasePath)
 
     const response = await fetch("/api/storage/upload", {
       method: "POST",
