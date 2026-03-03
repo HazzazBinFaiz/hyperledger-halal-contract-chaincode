@@ -300,7 +300,7 @@ class HalalTraceabilityContract extends Contract {
         const units = [];
 
         for (let i = 1; i <= count; i++) {
-            const unitId = parseInt(batch_id.toString() + i.toString().padStart(3, '0'));
+            const unitId = `${batch_id}:${i}`;
 
             const unit = {
                 original_batch_id: +batch_id,

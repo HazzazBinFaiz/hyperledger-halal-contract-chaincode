@@ -29,16 +29,17 @@ function parseId(raw: string): string | null {
   const trimmed = raw.trim()
   if (!trimmed) return null
 
+  if (/^\d+:\d+$/.test(trimmed)) return trimmed
   if (/^\d+$/.test(trimmed)) return trimmed
 
   const batchMatch = trimmed.match(/batch[_-]?id\s*[:=]\s*(\d+)/i)
   if (batchMatch?.[1]) return batchMatch[1]
 
-  const unitMatch = trimmed.match(/unit[_-]?id\s*[:=]\s*(\d+)/i)
+  const unitMatch = trimmed.match(/unit[_-]?id\s*[:=]\s*(\d+(?::\d+)?)/i)
   if (unitMatch?.[1]) return unitMatch[1]
 
-  const firstNumber = trimmed.match(/\d+/)
-  return firstNumber?.[0] ?? null
+  const firstUnitLike = trimmed.match(/\d+(?::\d+)?/)
+  return firstUnitLike?.[0] ?? null
 }
 
 export default function TraceByQrPage() {
@@ -68,12 +69,12 @@ export default function TraceByQrPage() {
   })
 
   const batchTraces = useMemo(
-    () => tracePagination.traces.filter((trace) => trace.unit_id === 0),
+    () => tracePagination.traces.filter((trace) => trace.unit_id === 0 || trace.unit_id === "0"),
     [tracePagination.traces]
   )
 
   const unitTraces = useMemo(
-    () => tracePagination.traces.filter((trace) => trace.unit_id === unit?.unit_id),
+    () => tracePagination.traces.filter((trace) => String(trace.unit_id) === unit?.unit_id),
     [tracePagination.traces, unit?.unit_id]
   )
 
@@ -106,7 +107,7 @@ export default function TraceByQrPage() {
 
     setLoadingMeta(true)
     try {
-      const id = Number(targetId)
+      const id = targetId.trim()
       const unitData = await getProcessedBatchById(id)
       if (unitData) {
         setMode("unit")
@@ -116,9 +117,16 @@ export default function TraceByQrPage() {
         return
       }
 
-      const batchData = await getBatchById(id)
+      if (!/^\d+$/.test(id)) {
+        resetTrace()
+        toast("No batch or processed unit found for this ID")
+        return
+      }
+
+      const numericId = Number(id)
+      const batchData = await getBatchById(numericId)
       if (batchData) {
-        const units = await getProcessedBatchesByBatchId(id)
+        const units = await getProcessedBatchesByBatchId(numericId)
 
         setMode("batch")
         setBatch(batchData)
@@ -184,7 +192,7 @@ export default function TraceByQrPage() {
         const raw = codes[0]?.rawValue ?? ""
         const parsed = parseId(raw)
         if (!parsed) {
-          setScanMessage("QR found but no numeric ID detected")
+          setScanMessage("QR found but no valid ID detected")
           return
         }
 
@@ -211,10 +219,10 @@ export default function TraceByQrPage() {
 
         <div className="flex flex-wrap gap-2">
           <input
-            type="number"
+            type="text"
             value={traceId}
             onChange={(e) => setTraceId(e.target.value)}
-            placeholder="Enter batch or unit ID"
+            placeholder="Enter batch ID or unit ID (e.g. 101 or 101:1)"
             className="h-10 min-w-[220px] flex-1 rounded-md border px-3 text-sm"
           />
           <button

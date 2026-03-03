@@ -9,12 +9,12 @@ import Link from "next/link"
 
 type Props = {
     units: ProcessedBatch[]
-    selected: number[]
-    onSelect: (ids: number[]) => void
+    selected: string[]
+    onSelect: (ids: string[]) => void
 }
 
 export default function ProcessedBatchMoveTable({ units, selected, onSelect }: Props) {
-    const toggle = (unitId: number) => {
+    const toggle = (unitId: string) => {
         if (selected.includes(unitId)) {
             onSelect(selected.filter((id) => id !== unitId))
             return

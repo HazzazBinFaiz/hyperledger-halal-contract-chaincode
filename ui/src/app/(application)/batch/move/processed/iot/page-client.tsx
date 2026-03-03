@@ -8,7 +8,7 @@ import IotTraceForm from "@/components/iot-trace-form"
 import { addIoTTraceForProcessedBatch, ProcessedBatch } from "@/lib/actions/batch"
 
 export default function ProcessedBatchIotTracePageClient({ units }: { units: ProcessedBatch[] }) {
-  const [selected, setSelected] = useState<number[]>([])
+  const [selected, setSelected] = useState<string[]>([])
   const router = useRouter()
 
   const handleSubmit = async (data: {

@@ -8,7 +8,7 @@ import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 
 export default function AcceptProcessedFrozenTransportPageClient({ units }: { units: ProcessedBatch[] }) {
-    const [selected, setSelected] = useState<number[]>([])
+    const [selected, setSelected] = useState<string[]>([])
     const router = useRouter()
 
     const handleSubmit = async (data: {

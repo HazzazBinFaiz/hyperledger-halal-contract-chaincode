@@ -16,8 +16,8 @@ export default function ProcessedBatchTracePage() {
   const [loadingMeta, setLoadingMeta] = useState(false)
 
   const targetUnitId = useMemo(() => {
-    const parsed = Number(unitId || paramUnitId)
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined
+    const value = (unitId || paramUnitId || "").trim()
+    return value ? value : undefined
   }, [paramUnitId, unitId])
 
   const tracePagination = useInfiniteBatchTrace({
@@ -27,16 +27,16 @@ export default function ProcessedBatchTracePage() {
   })
 
   const batchTraces = useMemo(
-    () => tracePagination.traces.filter((trace) => trace.unit_id === 0),
+    () => tracePagination.traces.filter((trace) => trace.unit_id === 0 || trace.unit_id === "0"),
     [tracePagination.traces]
   )
 
   const unitTraces = useMemo(
-    () => tracePagination.traces.filter((trace) => trace.unit_id === unit?.unit_id),
+    () => tracePagination.traces.filter((trace) => String(trace.unit_id) === unit?.unit_id),
     [tracePagination.traces, unit?.unit_id]
   )
 
-  const fetchMeta = async (id: number) => {
+  const fetchMeta = async (id: string) => {
     setLoadingMeta(true)
     try {
       const unitData = await getProcessedBatchById(id)
@@ -65,7 +65,7 @@ export default function ProcessedBatchTracePage() {
       {!paramUnitId && (
         <div className="flex gap-2 rounded-lg border bg-white p-3">
           <input
-            type="number"
+            type="text"
             placeholder="Enter Processed Unit ID"
             value={unitId}
             onChange={(e) => setUnitId(e.target.value)}
@@ -77,7 +77,7 @@ export default function ProcessedBatchTracePage() {
                 toast("Enter processed unit ID")
                 return
               }
-              void fetchMeta(Number(unitId))
+              void fetchMeta(unitId)
             }}
             className="h-10 rounded-md bg-slate-900 px-4 text-sm font-medium text-white"
           >

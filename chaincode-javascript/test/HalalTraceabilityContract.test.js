@@ -87,7 +87,7 @@ describe('HalalTraceabilityContract', () => {
 
     it('covers utility helpers', async () => {
         expect(contract._batchKey(ctx, 7)).to.equal('Batch:7');
-        expect(contract._processedKey(ctx, 7010)).to.equal('ProcessedBatch:7010');
+        expect(contract._processedKey(ctx, '7:10')).to.equal('ProcessedBatch:7:10');
         expect(contract._traceKey(ctx, 7, null, 't')).to.equal('Trace:7:0:t');
         expect(contract._unitStatusKey(ctx, 7, 1)).to.equal('BatchUnit:7:1');
 
@@ -160,7 +160,7 @@ describe('HalalTraceabilityContract', () => {
         const units = await contract.createProcessedBatch(ctx, 100, 2, '{"lot":"L1"}');
 
         expect(units).to.have.length(2);
-        expect(units[0].unit_id).to.equal(100001);
+        expect(units[0].unit_id).to.equal('100:1');
 
         byStatus = await contract.getBatchesByStatus(ctx, 'PROCESSED');
         expect(byStatus).to.have.length(1);
@@ -177,51 +177,51 @@ describe('HalalTraceabilityContract', () => {
     it('runs complete processed unit lifecycle including iot', async () => {
         const unit = {
             original_batch_id: 100,
-            unit_id: 100001,
+            unit_id: '100:1',
             status: 'CREATED',
             created_at: '2026-01-01T00:00:00Z',
             weight: 0,
             extra_info: {}
         };
 
-        await seedEntity(ctx, 'ProcessedBatch', 100001, unit);
+        await seedEntity(ctx, 'ProcessedBatch', '100:1', unit);
 
-        await contract.dispatchProcessedBatchToFrozenTransport(ctx, 100001, '2026-01-01T15:00:00Z', 2, '{}');
-        await contract.acceptProcessedBatchForFrozenTransport(ctx, 100001, '2026-01-01T16:00:00Z', '{}');
-        await contract.addIoTTraceForProcessedBatch(ctx, 100001, '91.2', '24.3', '-8.5', '{"sensor":"cold-2"}');
-        await contract.deliverProcessedBatchToRetail(ctx, 100001, 55, '2026-01-01T17:00:00Z', '{}');
-        await contract.putProcessedBatchOnSale(ctx, 100001, '2026-01-01T18:00:00Z', '{}');
-        await contract.sellProcessedBatch(ctx, 100001, '2026-01-01T19:00:00Z', '{}');
+        await contract.dispatchProcessedBatchToFrozenTransport(ctx, '100:1', '2026-01-01T15:00:00Z', 2, '{}');
+        await contract.acceptProcessedBatchForFrozenTransport(ctx, '100:1', '2026-01-01T16:00:00Z', '{}');
+        await contract.addIoTTraceForProcessedBatch(ctx, '100:1', '91.2', '24.3', '-8.5', '{"sensor":"cold-2"}');
+        await contract.deliverProcessedBatchToRetail(ctx, '100:1', 55, '2026-01-01T17:00:00Z', '{}');
+        await contract.putProcessedBatchOnSale(ctx, '100:1', '2026-01-01T18:00:00Z', '{}');
+        await contract.sellProcessedBatch(ctx, '100:1', '2026-01-01T19:00:00Z', '{}');
 
-        const soldUnit = await contract.getProcessedBatchById(ctx, 100001);
+        const soldUnit = await contract.getProcessedBatchById(ctx, '100:1');
         expect(soldUnit.status).to.equal('SOLD');
         expect(soldUnit.retail_shop_id).to.equal(55);
     });
 
     it('rejects processed unit when sold and allows reject before sold', async () => {
-        await seedEntity(ctx, 'ProcessedBatch', 200001, {
+        await seedEntity(ctx, 'ProcessedBatch', '200:1', {
             original_batch_id: 200,
-            unit_id: 200001,
+            unit_id: '200:1',
             status: 'ON_SALE',
             created_at: '2026-01-01T00:00:00Z',
             weight: 0,
             extra_info: {}
         });
 
-        await contract.rejectProcessedBatch(ctx, 200001, 'Package damaged', 7);
-        const rejected = await contract.getProcessedBatchById(ctx, 200001);
+        await contract.rejectProcessedBatch(ctx, '200:1', 'Package damaged', 7);
+        const rejected = await contract.getProcessedBatchById(ctx, '200:1');
         expect(rejected.status).to.equal('REJECTED');
 
-        await seedEntity(ctx, 'ProcessedBatch', 200002, {
+        await seedEntity(ctx, 'ProcessedBatch', '200:2', {
             original_batch_id: 200,
-            unit_id: 200002,
+            unit_id: '200:2',
             status: 'SOLD',
             created_at: '2026-01-01T00:00:00Z',
             weight: 0,
             extra_info: {}
         });
 
-        await expect(contract.rejectProcessedBatch(ctx, 200002, 'Late reject', 7))
+        await expect(contract.rejectProcessedBatch(ctx, '200:2', 'Late reject', 7))
             .to.be.rejectedWith('Cannot reject sold unit');
     });
 
@@ -340,49 +340,49 @@ describe('HalalTraceabilityContract', () => {
 
         await expect(contract.createProcessedBatch(ctx, 404, 0, '{}')).to.be.rejectedWith('Invalid split count');
 
-        await expect(contract.dispatchProcessedBatchToFrozenTransport(ctx, 900001, 't', 1, '{}'))
+        await expect(contract.dispatchProcessedBatchToFrozenTransport(ctx, '900:1', 't', 1, '{}'))
             .to.be.rejectedWith('Processed batch not found');
 
-        await seedEntity(ctx, 'ProcessedBatch', 500001, {
+        await seedEntity(ctx, 'ProcessedBatch', '500:1', {
             original_batch_id: 500,
-            unit_id: 500001,
+            unit_id: '500:1',
             status: 'WAITING_FOR_FROZEN_TRANSPORT',
             created_at: 't',
             weight: 0,
             extra_info: {}
         });
 
-        await expect(contract.dispatchProcessedBatchToFrozenTransport(ctx, 500001, 't', 1, '{}'))
+        await expect(contract.dispatchProcessedBatchToFrozenTransport(ctx, '500:1', 't', 1, '{}'))
             .to.be.rejectedWith('Invalid state');
 
-        await seedEntity(ctx, 'ProcessedBatch', 500002, {
+        await seedEntity(ctx, 'ProcessedBatch', '500:2', {
             original_batch_id: 500,
-            unit_id: 500002,
+            unit_id: '500:2',
             status: 'CREATED',
             created_at: 't',
             weight: 0,
             extra_info: {}
         });
 
-        await expect(contract.acceptProcessedBatchForFrozenTransport(ctx, 500002, 't', '{}'))
+        await expect(contract.acceptProcessedBatchForFrozenTransport(ctx, '500:2', 't', '{}'))
             .to.be.rejectedWith('Invalid state');
 
-        await expect(contract.addIoTTraceForProcessedBatch(ctx, 500002, '1', '1', '1', '{}'))
+        await expect(contract.addIoTTraceForProcessedBatch(ctx, '500:2', '1', '1', '1', '{}'))
             .to.be.rejectedWith('Processed batch must be in frozen transport');
 
-        await expect(contract.addIoTTraceForProcessedBatch(ctx, 900002, '1', '1', '1', '{}'))
+        await expect(contract.addIoTTraceForProcessedBatch(ctx, '900:2', '1', '1', '1', '{}'))
             .to.be.rejectedWith('Processed batch not found');
 
-        await expect(contract.deliverProcessedBatchToRetail(ctx, 500002, 1, 't', '{}'))
+        await expect(contract.deliverProcessedBatchToRetail(ctx, '500:2', 1, 't', '{}'))
             .to.be.rejectedWith('Invalid state');
 
-        await expect(contract.putProcessedBatchOnSale(ctx, 500002, 't', '{}'))
+        await expect(contract.putProcessedBatchOnSale(ctx, '500:2', 't', '{}'))
             .to.be.rejectedWith('Invalid state');
 
-        await expect(contract.sellProcessedBatch(ctx, 500002, 't', '{}'))
+        await expect(contract.sellProcessedBatch(ctx, '500:2', 't', '{}'))
             .to.be.rejectedWith('Invalid state');
 
-        await expect(contract.rejectProcessedBatch(ctx, 900003, 'nope', 1))
+        await expect(contract.rejectProcessedBatch(ctx, '900:3', 'nope', 1))
             .to.be.rejectedWith('Processed batch not found');
     });
 
@@ -418,12 +418,12 @@ describe('HalalTraceabilityContract', () => {
         await contract.acceptBatchForSlaughtering(ctx, 910, '9', 't4', 99);
         await contract.createProcessedBatch(ctx, 910, 1);
 
-        await contract.dispatchProcessedBatchToFrozenTransport(ctx, 910001, 't5', 5);
-        await contract.acceptProcessedBatchForFrozenTransport(ctx, 910001, 't6');
-        await contract.addIoTTraceForProcessedBatch(ctx, 910001, '1.3', '2.4', '-3.5');
-        await contract.deliverProcessedBatchToRetail(ctx, 910001, 15, 't7');
-        await contract.putProcessedBatchOnSale(ctx, 910001, 't8');
-        await contract.sellProcessedBatch(ctx, 910001, 't9');
+        await contract.dispatchProcessedBatchToFrozenTransport(ctx, '910:1', 't5', 5);
+        await contract.acceptProcessedBatchForFrozenTransport(ctx, '910:1', 't6');
+        await contract.addIoTTraceForProcessedBatch(ctx, '910:1', '1.3', '2.4', '-3.5');
+        await contract.deliverProcessedBatchToRetail(ctx, '910:1', 15, 't7');
+        await contract.putProcessedBatchOnSale(ctx, '910:1', 't8');
+        await contract.sellProcessedBatch(ctx, '910:1', 't9');
 
         const traces = await contract.queryTraceOfBatch(ctx, 910);
         expect(traces.length).to.be.greaterThan(0);

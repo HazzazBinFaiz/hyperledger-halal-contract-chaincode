@@ -5,7 +5,7 @@ import { type ReactNode } from "react"
 
 type Props = {
   traces: PoultryBatchTrace[]
-  focusUnitId?: number
+  focusUnitId?: string
 }
 
 function getTagIcon(tag?: string) {
@@ -60,8 +60,8 @@ export default function CompactTraceTimeline({ traces, focusUnitId }: Props) {
   return (
     <div className="space-y-3">
       {traces.map((trace, index) => {
-        const isBatchLevel = trace.unit_id === 0
-        const isFocusUnit = typeof focusUnitId === "number" && trace.unit_id === focusUnitId
+        const isBatchLevel = trace.unit_id === 0 || trace.unit_id === "0"
+        const isFocusUnit = typeof focusUnitId === "string" && String(trace.unit_id) === focusUnitId
 
         return (
           <article key={`${trace.datetime}-${trace.action}-${index}`} className="rounded-lg border border-slate-200 p-3 shadow-sm">

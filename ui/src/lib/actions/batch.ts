@@ -19,7 +19,7 @@ export type PoultryBatch = {
 
 export type ProcessedBatch = {
     original_batch_id: number
-    unit_id: number
+    unit_id: string
     status: string
     created_at: string
     weight: number
@@ -151,11 +151,11 @@ export async function createProcessedBatch(
     )
 }
 
-export async function getProcessedBatchById(unit_id: number): Promise<ProcessedBatch | null> {
+export async function getProcessedBatchById(unit_id: string): Promise<ProcessedBatch | null> {
     const resultBytes = await contract.evaluateTransaction('getProcessedBatchById', unit_id.toString())
     try {
         return JSON.parse(utf8Decoder.decode(resultBytes)) as ProcessedBatch | null
-    } catch (error) {
+    } catch {
         return null;
     }
 }
@@ -176,7 +176,7 @@ export async function getProcessedBatchesByBatchId(batch_id: number): Promise<Pr
 }
 
 export async function dispatchProcessedBatchToFrozenTransport(
-    unit_id: number,
+    unit_id: string,
     dispatch_time: string,
     room_temperature: number,
     extra_info: Record<string, string>
@@ -191,7 +191,7 @@ export async function dispatchProcessedBatchToFrozenTransport(
 }
 
 export async function acceptProcessedBatchForFrozenTransport(
-    unit_id: number,
+    unit_id: string,
     acceptance_time: string,
     extra_info: Record<string, string>
 ) {
@@ -204,7 +204,7 @@ export async function acceptProcessedBatchForFrozenTransport(
 }
 
 export async function deliverProcessedBatchToRetail(
-    unit_id: number,
+    unit_id: string,
     retail_shop_id: number,
     delivery_time: string,
     extra_info: Record<string, string>
@@ -219,7 +219,7 @@ export async function deliverProcessedBatchToRetail(
 }
 
 export async function putProcessedBatchOnSale(
-    unit_id: number,
+    unit_id: string,
     sale_time: string,
     extra_info: Record<string, string>
 ) {
@@ -232,7 +232,7 @@ export async function putProcessedBatchOnSale(
 }
 
 export async function sellProcessedBatch(
-    unit_id: number,
+    unit_id: string,
     sold_time: string,
     extra_info: Record<string, string>
 ) {
@@ -260,7 +260,7 @@ export async function rejectBatch(
 
 export type PoultryBatchTrace = {
     batch_id: number
-    unit_id: number
+    unit_id: number | string
     datetime: string
     actor_id: number
     action_code?: string
@@ -294,25 +294,25 @@ export async function getBatchById(batch_id: number): Promise<PoultryBatch | nul
     return JSON.parse(utf8Decoder.decode(resultBytes)) as PoultryBatch | null
 }
 
-export async function getTraceOfProcessedBatch(unit_id: number): Promise<PoultryBatchTrace[]> {
+export async function getTraceOfProcessedBatch(unit_id: string): Promise<PoultryBatchTrace[]> {
     const unit = await getProcessedBatchById(unit_id)
     if (!unit) return []
 
     const traces = await getTraceOfBatch(unit.original_batch_id)
-    return traces.filter((trace) => trace.unit_id === 0 || trace.unit_id === unit_id)
+    return traces.filter((trace) => trace.unit_id === 0 || trace.unit_id === "0" || String(trace.unit_id) === unit_id)
 }
 
 export async function getBatchOnlyTrace(batch_id: number): Promise<PoultryBatchTrace[]> {
     const traces = await getTraceOfBatch(batch_id)
-    return traces.filter((trace) => trace.unit_id === 0)
+    return traces.filter((trace) => trace.unit_id === 0 || trace.unit_id === "0")
 }
 
-export async function getUnitOnlyTrace(unit_id: number): Promise<PoultryBatchTrace[]> {
+export async function getUnitOnlyTrace(unit_id: string): Promise<PoultryBatchTrace[]> {
     const unit = await getProcessedBatchById(unit_id)
     if (!unit) return []
 
     const traces = await getTraceOfBatch(unit.original_batch_id)
-    return traces.filter((trace) => trace.unit_id === unit_id)
+    return traces.filter((trace) => String(trace.unit_id) === unit_id)
 }
 
 export async function addIoTTraceForBatch(
@@ -333,7 +333,7 @@ export async function addIoTTraceForBatch(
 }
 
 export async function addIoTTraceForProcessedBatch(
-    unit_id: number,
+    unit_id: string,
     longitude: number,
     latitude: number,
     temperature: number,
