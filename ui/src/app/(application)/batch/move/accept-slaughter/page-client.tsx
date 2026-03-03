@@ -12,7 +12,12 @@ export default function AcceptSlaughterPageClient({ batches, slaughterHouses }: 
     const [selected, setSelected] = useState<number[]>([])
     const router = useRouter()
 
-    const handleSubmit = async (data: any) => {
+    const handleSubmit = async (data: {
+        slaughter_house_id: string
+        acceptance_time: string
+        number_of_chicken: number
+        extra_info: Record<string, string>
+    }) => {
         if (!selected.length) return toast("Select batch")
 
         for (const batch of selected) {
@@ -36,12 +41,18 @@ export default function AcceptSlaughterPageClient({ batches, slaughterHouses }: 
                 title="Accept For Slaughtering"
                 fields={[
                     { name: "slaughter_house_id", label: "Slaughter House", type: "select", options: slaughterHouses.map((house) => ({
-                            label: house.name, value: house.id
+                            label: house.name, value: house.id.toString()
                         }))
                     },
                     { name: "acceptance_time", label: "Acceptance Time", type: "datetime-local" },
                     { name: "number_of_chicken", label: "Number of Chicken", type: "number" },
-                    { name: "extra_info", label: "Additional Info" }
+                    {
+                        name: "extra_info",
+                        label: "Additional Info",
+                        extraInfoConfig: {
+                            allowImageAdd: true,
+                        },
+                    }
                 ]}
                 onSubmit={handleSubmit}
             />

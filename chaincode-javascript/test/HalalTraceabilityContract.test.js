@@ -48,6 +48,17 @@ function createMockContext() {
             };
         },
 
+        async getStateByPartialCompositeKeyWithPagination(objectType, attributes, pageSize, bookmark) {
+            const iterator = await this.getStateByPartialCompositeKey(objectType, attributes);
+            return {
+                iterator,
+                metadata: {
+                    bookmark: bookmark || '',
+                    fetched_records_count: pageSize
+                }
+            };
+        },
+
         getDateTimestamp() {
             tsCounter += 1;
             return new Date(Date.UTC(2026, 0, 1, 0, 0, tsCounter));
@@ -93,9 +104,11 @@ describe('HalalTraceabilityContract', () => {
         expect(missingByUndefined).to.equal(null);
         ctx.stub.getState = originalGetState;
 
-        await contract._addTrace(ctx, 7, null, 1, 'Manual trace without extra');
+        await contract._addTrace(ctx, 7, null, 1, 'TRACE_CODE', 'Manual trace without extra', 'BATCH');
         const traceList = await contract.queryTraceOfBatch(ctx, 7);
         expect(traceList[0].extra_info).to.deep.equal({});
+        expect(traceList[0].action_code).to.equal('TRACE_CODE');
+        expect(traceList[0].action_tag).to.equal('BATCH');
 
         expect(() => contract._assert(true, 'nope')).to.not.throw();
         expect(() => contract._assert(false, 'boom')).to.throw('boom');
@@ -414,5 +427,13 @@ describe('HalalTraceabilityContract', () => {
 
         const traces = await contract.queryTraceOfBatch(ctx, 910);
         expect(traces.length).to.be.greaterThan(0);
+    });
+
+    it('covers paginated trace query helper', async () => {
+        await contract.createPoultryBatch(ctx, 1000, 1, '2026-01-01T00:00:00Z', 10, 'Broiler', 21, '{}');
+        const paginated = await contract.queryTraceOfBatchPaginated(ctx, 1000, 5, 'bookmark-1');
+        expect(paginated.records).to.have.length(1);
+        expect(paginated.bookmark).to.equal('bookmark-1');
+        expect(paginated.fetched_records_count).to.equal(5);
     });
 });

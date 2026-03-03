@@ -153,7 +153,11 @@ export async function createProcessedBatch(
 
 export async function getProcessedBatchById(unit_id: number): Promise<ProcessedBatch | null> {
     const resultBytes = await contract.evaluateTransaction('getProcessedBatchById', unit_id.toString())
-    return JSON.parse(utf8Decoder.decode(resultBytes)) as ProcessedBatch | null
+    try {
+        return JSON.parse(utf8Decoder.decode(resultBytes)) as ProcessedBatch | null
+    } catch (error) {
+        return null;
+    }
 }
 
 export async function getAllProcessedBatches(): Promise<ProcessedBatch[]> {
@@ -259,13 +263,30 @@ export type PoultryBatchTrace = {
     unit_id: number
     datetime: string
     actor_id: number
+    action_code?: string
     action: string
+    action_message?: string
+    action_tag?: string
     extra_info: Record<string, string | number | boolean>
 }
 
 export async function getTraceOfBatch(batch_id: number): Promise<PoultryBatchTrace[]> {
     const resultBytes = await contract.evaluateTransaction('queryTraceOfBatch', batch_id.toString())
     return JSON.parse(utf8Decoder.decode(resultBytes)) as PoultryBatchTrace[]
+}
+
+export async function getTraceOfBatchPaginated(
+    batch_id: number,
+    page_size: number,
+    bookmark = ''
+): Promise<{ records: PoultryBatchTrace[]; bookmark: string; fetched_records_count: number }> {
+    const resultBytes = await contract.evaluateTransaction(
+        'queryTraceOfBatchPaginated',
+        batch_id.toString(),
+        page_size.toString(),
+        bookmark
+    )
+    return JSON.parse(utf8Decoder.decode(resultBytes)) as { records: PoultryBatchTrace[]; bookmark: string; fetched_records_count: number }
 }
 
 export async function getBatchById(batch_id: number): Promise<PoultryBatch | null> {

@@ -1,18 +1,17 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 import {
   getBatchById,
-  getBatchOnlyTrace,
   getProcessedBatchById,
   getProcessedBatchesByBatchId,
-  getTraceOfBatch,
   PoultryBatch,
-  PoultryBatchTrace,
   ProcessedBatch,
 } from "@/lib/actions/batch"
 import { BatchTraceView, UnitTraceView } from "@/components/trace/trace-views"
+import { useInfiniteBatchTrace } from "@/hooks/use-infinite-batch-trace"
+import InfiniteTraceLoader from "@/components/trace/infinite-trace-loader"
 
 type BarcodeLike = {
   rawValue?: string
@@ -47,24 +46,42 @@ export default function TraceByQrPage() {
   const streamRef = useRef<MediaStream | null>(null)
 
   const [traceId, setTraceId] = useState("")
-  const [loading, setLoading] = useState(false)
+  const [loadingMeta, setLoadingMeta] = useState(false)
   const [isScanning, setIsScanning] = useState(false)
   const [scanMessage, setScanMessage] = useState("Camera is off")
 
   const [mode, setMode] = useState<TraceMode>(null)
   const [batch, setBatch] = useState<PoultryBatch | null>(null)
-  const [batchTraces, setBatchTraces] = useState<PoultryBatchTrace[]>([])
   const [batchUnits, setBatchUnits] = useState<ProcessedBatch[]>([])
   const [unit, setUnit] = useState<ProcessedBatch | null>(null)
-  const [unitTraces, setUnitTraces] = useState<PoultryBatchTrace[]>([])
+
+  const currentBatchId = useMemo(() => {
+    if (mode === "batch") return batch?.id
+    if (mode === "unit") return unit?.original_batch_id
+    return undefined
+  }, [batch?.id, mode, unit?.original_batch_id])
+
+  const tracePagination = useInfiniteBatchTrace({
+    batchId: currentBatchId,
+    pageSize: 20,
+    enabled: Boolean(currentBatchId),
+  })
+
+  const batchTraces = useMemo(
+    () => tracePagination.traces.filter((trace) => trace.unit_id === 0),
+    [tracePagination.traces]
+  )
+
+  const unitTraces = useMemo(
+    () => tracePagination.traces.filter((trace) => trace.unit_id === unit?.unit_id),
+    [tracePagination.traces, unit?.unit_id]
+  )
 
   const resetTrace = () => {
     setMode(null)
     setBatch(null)
-    setBatchTraces([])
     setBatchUnits([])
     setUnit(null)
-    setUnitTraces([])
   }
 
   const stopCamera = () => {
@@ -87,37 +104,26 @@ export default function TraceByQrPage() {
       return
     }
 
-    setLoading(true)
+    setLoadingMeta(true)
     try {
       const id = Number(targetId)
-      const batchData = await getBatchById(id)
-
-      if (batchData) {
-        const [traces, units] = await Promise.all([
-          getBatchOnlyTrace(id),
-          getProcessedBatchesByBatchId(id),
-        ])
-
-        setMode("batch")
-        setBatch(batchData)
-        setBatchTraces(traces.sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime()))
-        setBatchUnits(units)
-        setUnit(null)
-        setUnitTraces([])
+      const unitData = await getProcessedBatchById(id)
+      if (unitData) {
+        setMode("unit")
+        setUnit(unitData)
+        setBatch(null)
+        setBatchUnits([])
         return
       }
 
-      const unitData = await getProcessedBatchById(id)
-      if (unitData) {
-        const all = await getTraceOfBatch(unitData.original_batch_id)
-        const sorted = all.sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime())
+      const batchData = await getBatchById(id)
+      if (batchData) {
+        const units = await getProcessedBatchesByBatchId(id)
 
-        setMode("unit")
-        setUnit(unitData)
-        setBatchTraces(sorted.filter((trace) => trace.unit_id === 0))
-        setUnitTraces(sorted.filter((trace) => trace.unit_id === unitData.unit_id))
-        setBatch(null)
-        setBatchUnits([])
+        setMode("batch")
+        setBatch(batchData)
+        setBatchUnits(units)
+        setUnit(null)
         return
       }
 
@@ -127,7 +133,7 @@ export default function TraceByQrPage() {
       console.error(error)
       toast("Failed to fetch trace")
     } finally {
-      setLoading(false)
+      setLoadingMeta(false)
     }
   }, [])
 
@@ -241,17 +247,41 @@ export default function TraceByQrPage() {
         </div>
       </section>
 
-      {loading && <p className="text-sm text-muted-foreground">Loading trace...</p>}
+      {loadingMeta && <p className="text-sm text-muted-foreground">Loading trace...</p>}
 
-      {!loading && mode === "batch" && batch && (
-        <BatchTraceView batch={batch} traces={batchTraces} units={batchUnits} />
+      {!loadingMeta && mode === "batch" && batch && (
+        <BatchTraceView
+          batch={batch}
+          traces={batchTraces}
+          units={batchUnits}
+          timelineFooter={
+            <InfiniteTraceLoader
+              loading={tracePagination.loading}
+              hasMore={tracePagination.hasMore}
+              error={tracePagination.error}
+              sentinelRef={tracePagination.sentinelRef}
+            />
+          }
+        />
       )}
 
-      {!loading && mode === "unit" && unit && (
-        <UnitTraceView unit={unit} batchTraces={batchTraces} unitTraces={unitTraces} />
+      {!loadingMeta && mode === "unit" && unit && (
+        <UnitTraceView
+          unit={unit}
+          batchTraces={batchTraces}
+          unitTraces={unitTraces}
+          batchTimelineFooter={
+            <InfiniteTraceLoader
+              loading={tracePagination.loading}
+              hasMore={tracePagination.hasMore}
+              error={tracePagination.error}
+              sentinelRef={tracePagination.sentinelRef}
+            />
+          }
+        />
       )}
 
-      {!loading && !mode && <p className="text-sm text-muted-foreground">No trace selected.</p>}
+      {!loadingMeta && !mode && <p className="text-sm text-muted-foreground">No trace selected.</p>}
     </div>
   )
 }

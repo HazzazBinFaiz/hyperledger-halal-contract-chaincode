@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react"
 import { createSlaughterHouses, listSlaughterHouses, SlaughterHouse } from "@/lib/actions/slaughter-house"
-import { useForm, useFieldArray } from "react-hook-form"
+import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -10,208 +10,158 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from "@/components/ui/table"
-import { Loader2, Plus, Trash } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import { toast } from "sonner"
+import ExtraInfoEditor from "@/components/extra-info-editor"
+import ExtraInfoView from "@/components/extra-info-view"
 
 const schema = z.object({
-    name: z.string().min(1),
-    address: z.string().min(1),
-    extra_info: z.array(
-        z.object({
-            key: z.string().optional(),
-            value: z.string().optional(),
-        })
-    ),
+  name: z.string().min(1),
+  address: z.string().min(1),
 })
 
 type FormValues = z.infer<typeof schema>
 
+type ExtraRow = {
+  key: string
+  value: string
+  type?: "text" | "boolean" | "image" | "file"
+  boolValue?: boolean
+  removable?: boolean
+  lockedType?: boolean
+}
+
 export default function SlaughterHouseClient({
-    initialSlaughterHouses,
+  initialSlaughterHouses,
 }: {
-    initialSlaughterHouses: SlaughterHouse[]
+  initialSlaughterHouses: SlaughterHouse[]
 }) {
-    const [slaughterHouses, setSlaughterHouses] = useState<SlaughterHouse[]>(initialSlaughterHouses)
-    const [isPending, startTransition] = useTransition()
+  const [slaughterHouses, setSlaughterHouses] = useState<SlaughterHouse[]>(initialSlaughterHouses)
+  const [isPending, startTransition] = useTransition()
+  const [extraRows, setExtraRows] = useState<ExtraRow[]>([
+    { key: "", value: "", type: "text", boolValue: false, removable: true, lockedType: true },
+  ])
 
-    const {
-        register,
-        control,
-        handleSubmit,
-        reset,
-    } = useForm<FormValues>({
-        resolver: zodResolver(schema),
-        defaultValues: {
-            name: "",
-            address: "",
-            extra_info: [{ key: "", value: "" }],
-        },
-    })
+  const { register, handleSubmit, reset } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { name: "", address: "" },
+  })
 
-    const { fields, append, remove } = useFieldArray({
-        control,
-        name: "extra_info",
-    })
+  const onSubmit = (data: FormValues) => {
+    const additionalObject = extraRows
+      .filter((row) => row.key.trim())
+      .reduce((acc, row) => {
+        if ((row.type ?? "text") === "boolean") {
+          acc[row.key.trim()] = row.boolValue ? "YES" : "NO"
+          return acc
+        }
+        acc[row.key.trim()] = row.value || ""
+        return acc
+      }, {} as Record<string, string>)
 
-    const onSubmit = (data: FormValues) => {
-        const additionalObject = data.extra_info
-            .filter(f => f.key?.trim())
-            .reduce((acc, curr) => {
-                acc[curr.key!] = curr.value || ""
-                return acc
-            }, {} as Record<string, string>)
-
-        startTransition(async () => {
-            try {
-                await createSlaughterHouses({
-                    name: data.name,
-                    address: data.address,
-                    extra_info: additionalObject,
-                })
-
-                const updated = await listSlaughterHouses()
-                setSlaughterHouses(updated)
-
-                reset()
-
-                toast("Slaughter House Created", {
-                    description: "Slaughter House added successfully",
-                })
-
-            } catch {
-                toast("Error", {
-                    description: "Failed to create slaughter house",
-                })
-            }
+    startTransition(async () => {
+      try {
+        await createSlaughterHouses({
+          name: data.name,
+          address: data.address,
+          extra_info: additionalObject,
         })
-    }
 
-    return (
-        <div className="flex flex-1 flex-col gap-6 p-6">
+        const updated = await listSlaughterHouses()
+        setSlaughterHouses(updated)
 
-            {/* ================= FORM CARD ================= */}
-            <Card className="w-full mx-auto">
-                <CardHeader>
-                    <CardTitle>Create New Slaughter House</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <form onSubmit={handleSubmit(onSubmit)} className="flex justify-center flex-wrap space-y-6">
+        reset()
+        setExtraRows([{ key: "", value: "", type: "text", boolValue: false, removable: true, lockedType: true }])
 
-                        <div className="w-full md:w-1/2">
-                            <div className="p-2">
-                                <Label>Name *</Label>
-                                <Input className="mt-2" {...register("name")} />
-                            </div>
-                        </div>
+        toast("Slaughter House Created", {
+          description: "Slaughter House added successfully",
+        })
+      } catch {
+        toast("Error", {
+          description: "Failed to create slaughter house",
+        })
+      }
+    })
+  }
 
-                        <div className="w-full md:w-1/2">
-                            <div className="p-2">
-                                <Label>Address *</Label>
-                                <Input className="mt-2" {...register("address")} />
-                            </div>
-                        </div>
+  return (
+    <div className="flex flex-1 flex-col gap-6 p-6">
+      <Card className="mx-auto w-full">
+        <CardHeader>
+          <CardTitle>Create New Slaughter House</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit(onSubmit)} className="flex flex-wrap justify-center space-y-6">
+            <div className="w-full md:w-1/2">
+              <div className="p-2">
+                <Label>Name *</Label>
+                <Input className="mt-2" {...register("name")} />
+              </div>
+            </div>
 
-                        <div className="w-full space-y-4">
-                            <div className="flex justify-between">
-                                <Label>Additional Info</Label>
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => append({ key: "", value: "" })}
-                                >
-                                    <Plus className="w-4 h-4 mr-1" />
-                                    Add
-                                </Button>
-                            </div>
+            <div className="w-full md:w-1/2">
+              <div className="p-2">
+                <Label>Address *</Label>
+                <Input className="mt-2" {...register("address")} />
+              </div>
+            </div>
 
-                            {fields.map((field, index) => (
-                                <div key={field.id} className="flex gap-2">
-                                    <Input
-                                        placeholder="Key"
-                                        {...register(`extra_info.${index}.key`)}
-                                    />
-                                    <Input
-                                        placeholder="Value"
-                                        {...register(`extra_info.${index}.value`)}
-                                    />
-                                    <Button
-                                        type="button"
-                                        size="icon"
-                                        variant="ghost"
-                                        onClick={() => remove(index)}
-                                    >
-                                        <Trash className="w-4 h-4 text-red-500" />
-                                    </Button>
-                                </div>
-                            ))}
-                        </div>
+            <div className="w-full p-2">
+              <ExtraInfoEditor rows={extraRows} onChange={setExtraRows} />
+            </div>
 
-                        <Button type="submit" disabled={isPending} className="w-full">
-                            {isPending && (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            )}
-                            {isPending ? "Creating..." : "Create Slaughter House"}
-                        </Button>
+            <Button type="submit" disabled={isPending} className="w-full">
+              {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isPending ? "Creating..." : "Create Slaughter House"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
 
-                    </form>
-                </CardContent>
-            </Card>
-
-            {/* ================= TABLE ================= */}
-
-            <Card>
-                <CardHeader>
-                    <CardTitle>Slaughter Houses</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Slaughter House ID</TableHead>
-                                <TableHead>Name</TableHead>
-                                <TableHead>Address</TableHead>
-                                <TableHead>Additional Info</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {slaughterHouses.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={4} className="text-center text-muted-foreground py-6">
-                                        No slaugheter house found
-                                    </TableCell>
-                                </TableRow>
-                            ) : (
-                                slaughterHouses.map(slaughetrHouse => (
-                                    <TableRow key={slaughetrHouse.id}>
-                                        <TableCell>{slaughetrHouse.id}</TableCell>
-                                        <TableCell>{slaughetrHouse.name}</TableCell>
-                                        <TableCell>{slaughetrHouse.address}</TableCell>
-                                        <TableCell>
-                                            <div className="space-y-1 text-sm">
-                                                {Object.entries(slaughetrHouse.extra_info).length === 0 && "—"}
-                                                {Object.entries(slaughetrHouse.extra_info).map(([k, v]) => (
-                                                    <div key={k}>
-                                                        - <span className="font-medium">{k}</span> : {v}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
-
-        </div>
-    )
+      <Card>
+        <CardHeader>
+          <CardTitle>Slaughter Houses</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Slaughter House ID</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Address</TableHead>
+                <TableHead>Additional Info</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {slaughterHouses.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="py-6 text-center text-muted-foreground">
+                    No slaughter house found
+                  </TableCell>
+                </TableRow>
+              ) : (
+                slaughterHouses.map((house) => (
+                  <TableRow key={house.id}>
+                    <TableCell>{house.id}</TableCell>
+                    <TableCell>{house.name}</TableCell>
+                    <TableCell>{house.address}</TableCell>
+                    <TableCell>
+                      <ExtraInfoView info={house.extra_info} compactThreshold={3} />
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
+  )
 }

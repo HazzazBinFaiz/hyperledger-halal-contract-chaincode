@@ -1,66 +1,68 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   getBatchById,
-  getBatchOnlyTrace,
   getProcessedBatchesByBatchId,
   PoultryBatch,
-  PoultryBatchTrace,
   ProcessedBatch,
 } from "@/lib/actions/batch"
 import { useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import { BatchTraceView } from "@/components/trace/trace-views"
+import InfiniteTraceLoader from "@/components/trace/infinite-trace-loader"
+import { useInfiniteBatchTrace } from "@/hooks/use-infinite-batch-trace"
 
 export default function BatchTracePage() {
   const searchParams = useSearchParams()
   const paramBatchId = searchParams.get("id")
   const [batchId, setBatchId] = useState(paramBatchId || "")
-  const [traces, setTraces] = useState<PoultryBatchTrace[]>([])
   const [batch, setBatch] = useState<PoultryBatch | null>(null)
   const [units, setUnits] = useState<ProcessedBatch[]>([])
-  const [loading, setLoading] = useState(false)
+  const [loadingMeta, setLoadingMeta] = useState(false)
 
-  const fetchTrace = async (id: string) => {
-    if (!id) {
-      toast("Enter batch ID")
-      return
-    }
+  const numericBatchId = useMemo(() => {
+    const parsed = Number(batchId || paramBatchId)
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined
+  }, [batchId, paramBatchId])
 
-    setLoading(true)
+  const tracePagination = useInfiniteBatchTrace({
+    batchId: numericBatchId,
+    pageSize: 20,
+    enabled: Boolean(numericBatchId && batch),
+  })
+
+  const batchTraces = useMemo(
+    () => tracePagination.traces.filter((trace) => trace.unit_id === 0),
+    [tracePagination.traces]
+  )
+
+  const fetchMeta = async (targetId: number) => {
+    setLoadingMeta(true)
     try {
-      const targetId = Number(id)
       const batchData = await getBatchById(targetId)
       if (!batchData) {
         toast("Batch not found")
         setBatch(null)
-        setTraces([])
         setUnits([])
         return
       }
 
-      const [batchOnlyTraces, processedUnits] = await Promise.all([
-        getBatchOnlyTrace(targetId),
-        getProcessedBatchesByBatchId(targetId),
-      ])
-
+      const processedUnits = await getProcessedBatchesByBatchId(targetId)
       setBatch(batchData)
       setUnits(processedUnits)
-      setTraces(batchOnlyTraces.sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime()))
     } catch (error) {
       console.error(error)
       toast("Failed to fetch trace")
     } finally {
-      setLoading(false)
+      setLoadingMeta(false)
     }
   }
 
   useEffect(() => {
-    if (paramBatchId) {
-      fetchTrace(paramBatchId)
-    }
-  }, [paramBatchId])
+    if (!numericBatchId) return
+    void fetchMeta(numericBatchId)
+  }, [numericBatchId])
 
   return (
     <div className="mx-auto max-w-5xl space-y-4 p-6">
@@ -74,7 +76,13 @@ export default function BatchTracePage() {
             className="h-10 flex-1 rounded-md border px-3 text-sm"
           />
           <button
-            onClick={() => fetchTrace(batchId)}
+            onClick={() => {
+              if (!batchId) {
+                toast("Enter batch ID")
+                return
+              }
+              void fetchMeta(Number(batchId))
+            }}
             className="h-10 rounded-md bg-slate-900 px-4 text-sm font-medium text-white"
           >
             Show Trace
@@ -82,11 +90,25 @@ export default function BatchTracePage() {
         </div>
       )}
 
-      {loading && <p className="text-sm text-muted-foreground">Loading...</p>}
+      {loadingMeta && <p className="text-sm text-muted-foreground">Loading...</p>}
 
-      {!loading && batch && <BatchTraceView batch={batch} traces={traces} units={units} />}
+      {!loadingMeta && batch && (
+        <BatchTraceView
+          batch={batch}
+          traces={batchTraces}
+          units={units}
+          timelineFooter={
+            <InfiniteTraceLoader
+              loading={tracePagination.loading}
+              hasMore={tracePagination.hasMore}
+              error={tracePagination.error}
+              sentinelRef={tracePagination.sentinelRef}
+            />
+          }
+        />
+      )}
 
-      {!loading && !batch && <p className="text-sm text-muted-foreground">No trace found.</p>}
+      {!loadingMeta && !batch && <p className="text-sm text-muted-foreground">No trace found.</p>}
     </div>
   )
 }

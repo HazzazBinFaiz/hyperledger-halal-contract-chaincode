@@ -1,5 +1,6 @@
 "use client"
 
+import { useMemo, useState } from "react"
 import Link from "next/link"
 import { Search } from "lucide-react"
 import { ProcessedBatch } from "@/lib/actions/batch"
@@ -13,12 +14,35 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import ExtraInfoView from "@/components/extra-info-view"
+import TableFilters from "@/components/list/table-filters"
+import PaginationControls from "@/components/list/pagination-controls"
+import { usePagination } from "@/hooks/use-pagination"
 
 export default function ProcessedBatchesClient({
   initialUnits,
 }: {
   initialUnits: ProcessedBatch[]
 }) {
+  const [search, setSearch] = useState("")
+  const [status, setStatus] = useState("ALL")
+
+  const statuses = useMemo(
+    () => Array.from(new Set(initialUnits.map((unit) => unit.status))).sort(),
+    [initialUnits]
+  )
+
+  const filtered = useMemo(() => {
+    return initialUnits.filter((unit) => {
+      const statusMatch = status === "ALL" || unit.status === status
+      const searchTerm = search.trim()
+      const searchMatch = !searchTerm || String(unit.unit_id).includes(searchTerm) || String(unit.original_batch_id).includes(searchTerm)
+      return statusMatch && searchMatch
+    })
+  }, [initialUnits, search, status])
+
+  const pagination = usePagination(filtered, 10)
+
   return (
     <div className="flex flex-1 flex-col gap-6 p-6">
       <Card>
@@ -26,6 +50,20 @@ export default function ProcessedBatchesClient({
           <CardTitle>Processed Units</CardTitle>
         </CardHeader>
         <CardContent>
+          <TableFilters
+            search={search}
+            onSearchChange={(value) => {
+              setSearch(value)
+              pagination.reset()
+            }}
+            status={status}
+            statuses={statuses}
+            onStatusChange={(value) => {
+              setStatus(value)
+              pagination.reset()
+            }}
+          />
+
           <Table>
             <TableHeader>
               <TableRow>
@@ -39,14 +77,14 @@ export default function ProcessedBatchesClient({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {initialUnits.length === 0 ? (
+              {pagination.pagedRows.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="py-6 text-center text-muted-foreground">
                     No processed units found
                   </TableCell>
                 </TableRow>
               ) : (
-                initialUnits.map((unit) => (
+                pagination.pagedRows.map((unit) => (
                   <TableRow key={unit.unit_id}>
                     <TableCell>
                       <Link
@@ -67,14 +105,7 @@ export default function ProcessedBatchesClient({
                     <TableCell>{unit.status}</TableCell>
                     <TableCell>{unit.weight}</TableCell>
                     <TableCell>{unit.retail_shop_id ?? "-"}</TableCell>
-                    <TableCell>
-                      {Object.entries(unit.extra_info).length === 0 && "-"}
-                      {Object.entries(unit.extra_info).map(([k, v]) => (
-                        <div key={k}>
-                          - <span className="font-medium">{k}</span>: {v}
-                        </div>
-                      ))}
-                    </TableCell>
+                    <TableCell><ExtraInfoView info={unit.extra_info} /></TableCell>
                     <TableCell className="text-right">
                       <Button size="icon" variant="ghost" asChild>
                         <Link href={`/batch/processed/trace?id=${unit.unit_id}`}>
@@ -87,6 +118,19 @@ export default function ProcessedBatchesClient({
               )}
             </TableBody>
           </Table>
+
+          <PaginationControls
+            page={pagination.page}
+            pageSize={pagination.pageSize}
+            total={pagination.total}
+            totalPages={pagination.totalPages}
+            onPrev={pagination.prev}
+            onNext={pagination.next}
+            onPageSizeChange={(size) => {
+              pagination.setPageSize(size)
+              pagination.reset()
+            }}
+          />
         </CardContent>
       </Card>
     </div>

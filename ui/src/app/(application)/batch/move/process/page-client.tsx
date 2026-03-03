@@ -11,7 +11,10 @@ export default function ProcessPageClient({ batches }: { batches: PoultryBatch[]
     const [selected, setSelected] = useState<number[]>([])
     const router = useRouter()
 
-    const handleSubmit = async (data: any) => {
+    const handleSubmit = async (data: {
+        number_of_split_batches: number
+        extra_info: Record<string, string>
+    }) => {
         if (!selected.length) return toast("Select batch")
 
         for (const batch of selected) {
@@ -35,6 +38,7 @@ export default function ProcessPageClient({ batches }: { batches: PoultryBatch[]
                     { name: "number_of_split_batches", label: "Split Count", type: "number" },
                     { name: "extra_info", label: "Additional Info",
                         extraInfoConfig: {
+                            allowImageAdd: true,
                             presets: [
                                 {
                                     key: "alive_at_slaughter",

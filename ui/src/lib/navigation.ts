@@ -21,6 +21,11 @@ export const navMain: NavSection[] = [
     ],
   },
   {
+    title: "Settings",
+    url: "#",
+    items: [{ title: "Storage Config", url: "/settings/storage" }],
+  },
+  {
     title: "Batch",
     url: "#",
     items: [

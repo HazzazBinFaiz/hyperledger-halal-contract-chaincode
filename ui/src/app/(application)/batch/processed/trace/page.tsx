@@ -1,61 +1,64 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { toast } from "sonner"
-import {
-  getProcessedBatchById,
-  getTraceOfBatch,
-  PoultryBatchTrace,
-  ProcessedBatch,
-} from "@/lib/actions/batch"
+import { getProcessedBatchById, ProcessedBatch } from "@/lib/actions/batch"
 import { UnitTraceView } from "@/components/trace/trace-views"
+import { useInfiniteBatchTrace } from "@/hooks/use-infinite-batch-trace"
+import InfiniteTraceLoader from "@/components/trace/infinite-trace-loader"
 
 export default function ProcessedBatchTracePage() {
   const searchParams = useSearchParams()
   const paramUnitId = searchParams.get("id")
   const [unitId, setUnitId] = useState(paramUnitId || "")
   const [unit, setUnit] = useState<ProcessedBatch | null>(null)
-  const [batchTraces, setBatchTraces] = useState<PoultryBatchTrace[]>([])
-  const [unitTraces, setUnitTraces] = useState<PoultryBatchTrace[]>([])
-  const [loading, setLoading] = useState(false)
+  const [loadingMeta, setLoadingMeta] = useState(false)
 
-  const fetchTrace = async (id: string) => {
-    if (!id) {
-      toast("Enter processed unit ID")
-      return
-    }
+  const targetUnitId = useMemo(() => {
+    const parsed = Number(unitId || paramUnitId)
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined
+  }, [paramUnitId, unitId])
 
-    setLoading(true)
+  const tracePagination = useInfiniteBatchTrace({
+    batchId: unit?.original_batch_id,
+    pageSize: 20,
+    enabled: Boolean(unit),
+  })
+
+  const batchTraces = useMemo(
+    () => tracePagination.traces.filter((trace) => trace.unit_id === 0),
+    [tracePagination.traces]
+  )
+
+  const unitTraces = useMemo(
+    () => tracePagination.traces.filter((trace) => trace.unit_id === unit?.unit_id),
+    [tracePagination.traces, unit?.unit_id]
+  )
+
+  const fetchMeta = async (id: number) => {
+    setLoadingMeta(true)
     try {
-      const unitData = await getProcessedBatchById(Number(id))
+      const unitData = await getProcessedBatchById(id)
       if (!unitData) {
         toast("Processed unit not found")
         setUnit(null)
-        setBatchTraces([])
-        setUnitTraces([])
         return
       }
 
-      const allBatchTraces = await getTraceOfBatch(unitData.original_batch_id)
-      const sorted = allBatchTraces.sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime())
-
       setUnit(unitData)
-      setBatchTraces(sorted.filter((trace) => trace.unit_id === 0))
-      setUnitTraces(sorted.filter((trace) => trace.unit_id === unitData.unit_id))
     } catch (error) {
       console.error(error)
       toast("Failed to fetch processed trace")
     } finally {
-      setLoading(false)
+      setLoadingMeta(false)
     }
   }
 
   useEffect(() => {
-    if (paramUnitId) {
-      fetchTrace(paramUnitId)
-    }
-  }, [paramUnitId])
+    if (!targetUnitId) return
+    void fetchMeta(targetUnitId)
+  }, [targetUnitId])
 
   return (
     <div className="mx-auto max-w-5xl space-y-4 p-6">
@@ -69,7 +72,13 @@ export default function ProcessedBatchTracePage() {
             className="h-10 flex-1 rounded-md border px-3 text-sm"
           />
           <button
-            onClick={() => fetchTrace(unitId)}
+            onClick={() => {
+              if (!unitId) {
+                toast("Enter processed unit ID")
+                return
+              }
+              void fetchMeta(Number(unitId))
+            }}
             className="h-10 rounded-md bg-slate-900 px-4 text-sm font-medium text-white"
           >
             Show Trace
@@ -77,13 +86,25 @@ export default function ProcessedBatchTracePage() {
         </div>
       )}
 
-      {loading && <p className="text-sm text-muted-foreground">Loading...</p>}
+      {loadingMeta && <p className="text-sm text-muted-foreground">Loading...</p>}
 
-      {!loading && unit && (
-        <UnitTraceView unit={unit} batchTraces={batchTraces} unitTraces={unitTraces} />
+      {!loadingMeta && unit && (
+        <UnitTraceView
+          unit={unit}
+          batchTraces={batchTraces}
+          unitTraces={unitTraces}
+          batchTimelineFooter={
+            <InfiniteTraceLoader
+              loading={tracePagination.loading}
+              hasMore={tracePagination.hasMore}
+              error={tracePagination.error}
+              sentinelRef={tracePagination.sentinelRef}
+            />
+          }
+        />
       )}
 
-      {!loading && !unit && <p className="text-sm text-muted-foreground">No trace found.</p>}
+      {!loadingMeta && !unit && <p className="text-sm text-muted-foreground">No trace found.</p>}
     </div>
   )
 }

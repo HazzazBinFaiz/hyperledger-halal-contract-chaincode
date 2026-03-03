@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { type ReactNode } from "react"
 import CompactTraceTimeline from "@/components/trace/compact-trace-timeline"
 import { PoultryBatch, PoultryBatchTrace, ProcessedBatch } from "@/lib/actions/batch"
 
@@ -6,9 +7,10 @@ type BatchTraceViewProps = {
   batch: PoultryBatch
   traces: PoultryBatchTrace[]
   units?: ProcessedBatch[]
+  timelineFooter?: ReactNode
 }
 
-export function BatchTraceView({ batch, traces, units = [] }: BatchTraceViewProps) {
+export function BatchTraceView({ batch, traces, units = [], timelineFooter }: BatchTraceViewProps) {
   return (
     <div className="space-y-4">
       <section className="rounded-xl border bg-gradient-to-r from-white to-slate-50 p-4 shadow-sm">
@@ -32,6 +34,7 @@ export function BatchTraceView({ batch, traces, units = [] }: BatchTraceViewProp
       <section className="space-y-2 rounded-xl border bg-white p-4 shadow-sm">
         <h3 className="text-sm font-semibold text-slate-800">Batch Timeline</h3>
         <CompactTraceTimeline traces={traces} />
+        {timelineFooter}
       </section>
 
       {units.length > 0 && (
@@ -58,9 +61,11 @@ type UnitTraceViewProps = {
   unit: ProcessedBatch
   batchTraces: PoultryBatchTrace[]
   unitTraces: PoultryBatchTrace[]
+  batchTimelineFooter?: ReactNode
+  unitTimelineFooter?: ReactNode
 }
 
-export function UnitTraceView({ unit, batchTraces, unitTraces }: UnitTraceViewProps) {
+export function UnitTraceView({ unit, batchTraces, unitTraces, batchTimelineFooter, unitTimelineFooter }: UnitTraceViewProps) {
   return (
     <div className="space-y-4">
       <section className="rounded-xl border bg-gradient-to-r from-white to-slate-50 p-4 shadow-sm">
@@ -85,11 +90,13 @@ export function UnitTraceView({ unit, batchTraces, unitTraces }: UnitTraceViewPr
       <section className="space-y-2 rounded-xl border bg-white p-4 shadow-sm">
         <h3 className="text-sm font-semibold text-slate-800">Batch Timeline (Parent Batch)</h3>
         <CompactTraceTimeline traces={batchTraces} />
+        {batchTimelineFooter}
       </section>
 
       <section className="space-y-2 rounded-xl border bg-white p-4 shadow-sm">
         <h3 className="text-sm font-semibold text-slate-800">Unit Timeline</h3>
         <CompactTraceTimeline traces={unitTraces} focusUnitId={unit.unit_id} />
+        {unitTimelineFooter}
       </section>
     </div>
   )

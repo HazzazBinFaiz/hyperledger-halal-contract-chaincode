@@ -3,10 +3,10 @@
 import { useState, useTransition, useEffect } from "react"
 import { createPoultryBatch } from "@/lib/actions/batch"
 import { listFarms, Farm } from "@/lib/actions/farm"
-import { useForm, useFieldArray } from "react-hook-form"
+import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { useRouter } from "next/navigation"
-import { Loader2, Plus, Trash } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import { zodResolver } from "@hookform/resolvers/zod"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -23,30 +23,36 @@ import {
 } from "@/components/ui/select"
 
 import { toast } from "sonner"
+import ExtraInfoEditor from "@/components/extra-info-editor"
 
 const schema = z.object({
     farm_id: z.coerce.number().min(1, "Farm is required"),
     age_of_chicken: z.coerce.number(),
     breed_type: z.string().min(1),
     ideal_temperature: z.coerce.number(),
-    extra_info: z.array(
-        z.object({
-            key: z.string().optional(),
-            value: z.string().optional(),
-        })
-    ),
 })
 
 type FormValues = z.infer<typeof schema>
+
+type ExtraRow = {
+  key: string
+  value: string
+  type?: "text" | "boolean" | "image" | "file"
+  boolValue?: boolean
+  removable?: boolean
+  lockedType?: boolean
+}
 
 export default function BatchesCreateClient() {
     const [farms, setFarms] = useState<Farm[]>([])
     const [isPending, startTransition] = useTransition()
     const router = useRouter()
+    const [extraRows, setExtraRows] = useState<ExtraRow[]>([
+      { key: "", value: "", type: "text", boolValue: false, removable: true, lockedType: true },
+    ])
 
     const {
         register,
-        control,
         handleSubmit,
         reset,
         setValue,
@@ -58,13 +64,7 @@ export default function BatchesCreateClient() {
             age_of_chicken: 0,
             breed_type: "",
             ideal_temperature: 0,
-            extra_info: [{ key: "", value: "" }],
         },
-    })
-
-    const { fields, append, remove } = useFieldArray({
-        control,
-        name: "extra_info",
     })
 
     useEffect(() => {
@@ -72,10 +72,15 @@ export default function BatchesCreateClient() {
     }, [])
 
     const onSubmit = (data: FormValues) => {
-        const extraObject = data.extra_info
-            .filter(f => f.key?.trim())
-            .reduce((acc, curr) => {
-                acc[curr.key!] = curr.value || ""
+        const extraObject = extraRows
+            .filter((row) => row.key.trim())
+            .reduce((acc, row) => {
+                if ((row.type ?? "text") === "boolean") {
+                    acc[row.key.trim()] = row.boolValue ? "YES" : "NO"
+                    return acc
+                }
+
+                acc[row.key.trim()] = row.value || ""
                 return acc
             }, {} as Record<string, string>)
 
@@ -88,19 +93,21 @@ export default function BatchesCreateClient() {
                 })
 
                 reset()
+                setExtraRows([{ key: "", value: "", type: "text", boolValue: false, removable: true, lockedType: true }])
 
                 toast("Batch Created", {
                     description: "Poultry batch added successfully",
                 })
-            } catch (e: any) {
-                toast("Error", { description: e.message })
+                router.refresh()
+            } catch (error: unknown) {
+                const message = error instanceof Error ? error.message : "Failed to create batch"
+                toast("Error", { description: message })
             }
         })
     }
 
     return (
         <div className="flex flex-1 flex-col gap-6 p-6">
-
             <Card>
                 <CardHeader>
                     <CardTitle>Create Poultry Batch</CardTitle>
@@ -108,10 +115,7 @@ export default function BatchesCreateClient() {
 
                 <CardContent>
                     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-
-                        <div className="grid md:grid-cols-2 gap-4">
-
-                            {/* FARM SELECT */}
+                        <div className="grid gap-4 md:grid-cols-2">
                             <div>
                                 <Label>Farm</Label>
 
@@ -126,10 +130,7 @@ export default function BatchesCreateClient() {
 
                                     <SelectContent>
                                         {farms.map((farm) => (
-                                            <SelectItem
-                                                key={farm.id}
-                                                value={String(farm.id)}
-                                            >
+                                            <SelectItem key={farm.id} value={String(farm.id)}>
                                                 {farm.id} : {farm.name} ({farm.address})
                                             </SelectItem>
                                         ))}
@@ -137,9 +138,7 @@ export default function BatchesCreateClient() {
                                 </Select>
 
                                 {errors.farm_id && (
-                                    <p className="text-sm text-red-500 mt-1">
-                                        {errors.farm_id.message}
-                                    </p>
+                                    <p className="mt-1 text-sm text-red-500">{errors.farm_id.message}</p>
                                 )}
                             </div>
 
@@ -159,42 +158,7 @@ export default function BatchesCreateClient() {
                             </div>
                         </div>
 
-                        {/* EXTRA INFO */}
-                        <div className="space-y-2">
-                            <div className="flex justify-between">
-                                <Label>Extra Info</Label>
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => append({ key: "", value: "" })}
-                                >
-                                    <Plus className="w-4 h-4 mr-1" />
-                                    Add
-                                </Button>
-                            </div>
-
-                            {fields.map((field, index) => (
-                                <div key={field.id} className="flex gap-2">
-                                    <Input
-                                        placeholder="Key"
-                                        {...register(`extra_info.${index}.key`)}
-                                    />
-                                    <Input
-                                        placeholder="Value"
-                                        {...register(`extra_info.${index}.value`)}
-                                    />
-                                    <Button
-                                        type="button"
-                                        size="icon"
-                                        variant="ghost"
-                                        onClick={() => remove(index)}
-                                    >
-                                        <Trash className="w-4 h-4 text-red-500" />
-                                    </Button>
-                                </div>
-                            ))}
-                        </div>
+                        <ExtraInfoEditor rows={extraRows} onChange={setExtraRows} />
 
                         <Button type="submit" disabled={isPending} className="w-full">
                             {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

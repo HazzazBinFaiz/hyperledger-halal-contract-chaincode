@@ -22,6 +22,17 @@ const UNIT_STATUS = Object.freeze({
     REJECTED: 'REJECTED'
 });
 
+const TRACE_TAG = Object.freeze({
+    BATCH: 'BATCH',
+    TRANSPORT: 'TRANSPORT',
+    SLAUGHTER: 'SLAUGHTER',
+    PROCESS: 'PROCESS',
+    UNIT: 'UNIT',
+    IOT: 'IOT',
+    QUALITY: 'QUALITY',
+    SALE: 'SALE'
+});
+
 class HalalTraceabilityContract extends Contract {
 
     _batchKey(ctx, id) {
@@ -57,14 +68,17 @@ class HalalTraceabilityContract extends Contract {
         await ctx.stub.putState(key, Buffer.from(JSON.stringify(value)));
     }
 
-    async _addTrace(ctx, batchId, unitId, actorId, action, extra) {
+    async _addTrace(ctx, batchId, unitId, actorId, actionCode, actionMessage, actionTag, extra) {
         const datetime = ctx.stub.getDateTimestamp().toISOString();
         const trace = {
             batch_id: batchId,
             unit_id: unitId || 0,
             datetime,
             actor_id: actorId,
-            action,
+            action_code: actionCode,
+            action: actionMessage,
+            action_message: actionMessage,
+            action_tag: actionTag,
             extra_info: extra || {}
         };
         const key = this._traceKey(ctx, batchId, unitId, datetime);
@@ -142,7 +156,16 @@ class HalalTraceabilityContract extends Contract {
         };
 
         await this._putState(ctx, key, batch);
-        await this._addTrace(ctx, id, null, 0, `Batch ${id} created at farm ${farm_id}`, batch.extra_info);
+        await this._addTrace(
+            ctx,
+            id,
+            null,
+            0,
+            'BATCH_CREATED',
+            `Batch ${id} created at farm ${farm_id}`,
+            TRACE_TAG.BATCH,
+            batch.extra_info
+        );
         return batch;
     }
 
@@ -176,7 +199,9 @@ class HalalTraceabilityContract extends Contract {
             batch_id,
             null,
             0,
+            'BATCH_DISPATCHED',
             `Batch dispatched at ${dispatch_time} with ${number_of_chicken} chickens, temperature ${room_temperature}°C`,
+            TRACE_TAG.TRANSPORT,
             JSON.parse(extra_info || '{}')
         );
     }
@@ -193,7 +218,9 @@ class HalalTraceabilityContract extends Contract {
             batch_id,
             null,
             0,
+            'BATCH_TRANSPORT_ACCEPTED',
             `Batch accepted for transport at ${acceptance_time} with ${number_of_chicken} chickens`,
+            TRACE_TAG.TRANSPORT,
             JSON.parse(extra_info || '{}')
         );
     }
@@ -212,7 +239,9 @@ class HalalTraceabilityContract extends Contract {
             batch_id,
             null,
             0,
+            'BATCH_DELIVERED_TO_SLAUGHTERHOUSE',
             `Batch delivered to slaughterhouse ${slaughter_house_id} at ${delivery_time} with ${number_of_chicken} chickens`,
+            TRACE_TAG.TRANSPORT,
             JSON.parse(extra_info || '{}')
         );
     }
@@ -234,7 +263,9 @@ class HalalTraceabilityContract extends Contract {
             batch_id,
             null,
             0,
+            'BATCH_IOT_CAPTURED',
             'IoT telemetry captured for batch transport',
+            TRACE_TAG.IOT,
             payload
         );
     }
@@ -252,7 +283,9 @@ class HalalTraceabilityContract extends Contract {
             batch_id,
             null,
             0,
+            'BATCH_SLAUGHTER_ACCEPTED',
             `Batch accepted for slaughtering at slaughterhouse ${slaughter_house_id} on ${acceptance_time} with ${number_of_chicken} chickens`,
+            TRACE_TAG.SLAUGHTER,
             JSON.parse(extra_info || '{}')
         );
     }
@@ -291,7 +324,9 @@ class HalalTraceabilityContract extends Contract {
             batch_id,
             null,
             0,
+            'BATCH_PROCESSED',
             `Batch processed into ${count} units`,
+            TRACE_TAG.PROCESS,
             JSON.parse(extra_info || '{}')
         );
 
@@ -319,7 +354,9 @@ class HalalTraceabilityContract extends Contract {
             unit.original_batch_id,
             unit.unit_id,
             0,
+            'UNIT_DISPATCHED_TO_FROZEN_TRANSPORT',
             `Processed unit dispatched at ${dispatch_time}, temperature ${room_temperature}°C`,
+            TRACE_TAG.TRANSPORT,
             JSON.parse(extra_info || '{}')
         );
     }
@@ -337,7 +374,9 @@ class HalalTraceabilityContract extends Contract {
             unit.original_batch_id,
             unit.unit_id,
             0,
+            'UNIT_FROZEN_TRANSPORT_ACCEPTED',
             `Processed unit accepted for frozen transport at ${acceptance_time}`,
+            TRACE_TAG.TRANSPORT,
             JSON.parse(extra_info || '{}')
         );
     }
@@ -359,7 +398,9 @@ class HalalTraceabilityContract extends Contract {
             unit.original_batch_id,
             unit.unit_id,
             0,
+            'UNIT_IOT_CAPTURED',
             'IoT telemetry captured for frozen transport',
+            TRACE_TAG.IOT,
             payload
         );
     }
@@ -378,7 +419,9 @@ class HalalTraceabilityContract extends Contract {
             unit.original_batch_id,
             unit.unit_id,
             0,
+            'UNIT_DELIVERED_TO_RETAIL',
             `Processed unit delivered to retail shop ${retail_shop_id} at ${delivery_time}`,
+            TRACE_TAG.UNIT,
             JSON.parse(extra_info || '{}')
         );
     }
@@ -396,7 +439,9 @@ class HalalTraceabilityContract extends Contract {
             unit.original_batch_id,
             unit.unit_id,
             0,
+            'UNIT_PUT_ON_SALE',
             `Processed unit put on sale at ${sale_time}`,
+            TRACE_TAG.SALE,
             JSON.parse(extra_info || '{}')
         );
     }
@@ -414,7 +459,9 @@ class HalalTraceabilityContract extends Contract {
             unit.original_batch_id,
             unit.unit_id,
             0,
+            'UNIT_SOLD',
             `Processed unit sold at ${sold_time}`,
+            TRACE_TAG.SALE,
             JSON.parse(extra_info || '{}')
         );
     }
@@ -432,7 +479,9 @@ class HalalTraceabilityContract extends Contract {
             unit.original_batch_id,
             unit.unit_id,
             actor_id,
+            'UNIT_REJECTED',
             `Processed unit rejected. Reason: ${reason}`,
+            TRACE_TAG.QUALITY,
             { reason }
         );
     }
@@ -444,12 +493,33 @@ class HalalTraceabilityContract extends Contract {
         batch.status = BATCH_STATUS.REJECTED;
         await this._putState(ctx, this._batchKey(ctx, batch_id), batch);
 
-        await this._addTrace(ctx, batch_id, null, actor_id, `Batch rejected. Reason: ${reason}`, { reason });
+        await this._addTrace(
+            ctx,
+            batch_id,
+            null,
+            actor_id,
+            'BATCH_REJECTED',
+            `Batch rejected. Reason: ${reason}`,
+            TRACE_TAG.QUALITY,
+            { reason }
+        );
     }
 
     async queryTraceOfBatch(ctx, batch_id) {
         const iterator = await ctx.stub.getStateByPartialCompositeKey('Trace', [batch_id.toString()]);
         return this._collect(iterator);
+    }
+
+    async queryTraceOfBatchPaginated(ctx, batch_id, page_size, bookmark) {
+        const pageSize = Math.max(1, parseInt(page_size || '20', 10));
+        const queryBookmark = bookmark || '';
+        const result = await ctx.stub.getStateByPartialCompositeKeyWithPagination(
+            'Trace',
+            [batch_id.toString()],
+            pageSize,
+            queryBookmark
+        );
+        return this._collectPaginated(result.iterator, result.metadata);
     }
 
     async _getByPartial(ctx, objectType) {
@@ -469,6 +539,15 @@ class HalalTraceabilityContract extends Contract {
                 return results;
             }
         }
+    }
+
+    async _collectPaginated(iterator, metadata) {
+        const records = await this._collect(iterator);
+        return {
+            records,
+            bookmark: metadata && metadata.bookmark ? metadata.bookmark : '',
+            fetched_records_count: metadata && metadata.fetched_records_count ? metadata.fetched_records_count : records.length
+        };
     }
 }
 

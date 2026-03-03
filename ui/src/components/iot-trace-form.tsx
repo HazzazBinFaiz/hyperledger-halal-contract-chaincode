@@ -1,11 +1,12 @@
 "use client"
 
-import { type FormEvent, useState, useTransition } from "react"
+import { type FormEvent, useMemo, useState, useTransition } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import MapCoordinatePicker from "@/components/map-coordinate-picker"
+import ExtraInfoEditor from "@/components/extra-info-editor"
 
 type Props = {
   title: string
@@ -17,29 +18,39 @@ type Props = {
   }) => Promise<void>
 }
 
+type ExtraRow = {
+  key: string
+  value: string
+  type?: "text" | "boolean" | "image" | "file"
+  boolValue?: boolean
+  removable?: boolean
+}
+
 export default function IotTraceForm({ title, onSubmit }: Props) {
   const [longitude, setLongitude] = useState("")
   const [latitude, setLatitude] = useState("")
   const [temperature, setTemperature] = useState("")
-  const [pairs, setPairs] = useState([{ key: "", value: "" }])
   const [isPending, startTransition] = useTransition()
+  const [extraRows, setExtraRows] = useState<ExtraRow[]>([
+    { key: "", value: "", type: "text", boolValue: false, removable: true },
+  ])
 
-  const updatePair = (index: number, field: "key" | "value", value: string) => {
-    setPairs((prev) => prev.map((pair, i) => (i === index ? { ...pair, [field]: value } : pair)))
-  }
-
-  const addPair = () => setPairs((prev) => [...prev, { key: "", value: "" }])
-
-  const removePair = (index: number) => {
-    setPairs((prev) => prev.filter((_, i) => i !== index))
-  }
+  const mapCoordinates = useMemo(() => {
+    if (!latitude || !longitude) return undefined
+    return { latitude: Number(latitude), longitude: Number(longitude) }
+  }, [latitude, longitude])
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
-    const extra_info = pairs
+    const extra_info = extraRows
       .filter((pair) => pair.key.trim())
       .reduce<Record<string, string>>((acc, pair) => {
+        if ((pair.type ?? "text") === "boolean") {
+          acc[pair.key.trim()] = pair.boolValue ? "YES" : "NO"
+          return acc
+        }
+
         acc[pair.key.trim()] = pair.value
         return acc
       }, {})
@@ -69,6 +80,7 @@ export default function IotTraceForm({ title, onSubmit }: Props) {
             </div>
             <div className="flex items-end">
               <MapCoordinatePicker
+                value={mapCoordinates}
                 onSelect={({ latitude: lat, longitude: lng }) => {
                   setLatitude(lat)
                   setLongitude(lng)
@@ -77,27 +89,7 @@ export default function IotTraceForm({ title, onSubmit }: Props) {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label>Additional Info</Label>
-            {pairs.map((pair, index) => (
-              <div key={`pair-${index}`} className="grid gap-2 md:grid-cols-[1fr_1fr_auto]">
-                <Input
-                  placeholder="key"
-                  value={pair.key}
-                  onChange={(event) => updatePair(index, "key", event.target.value)}
-                />
-                <Input
-                  placeholder="value"
-                  value={pair.value}
-                  onChange={(event) => updatePair(index, "value", event.target.value)}
-                />
-                <Button type="button" variant="ghost" onClick={() => removePair(index)} disabled={pairs.length === 1}>
-                  Remove
-                </Button>
-              </div>
-            ))}
-            <Button type="button" variant="outline" onClick={addPair}>Add Info</Button>
-          </div>
+          <ExtraInfoEditor rows={extraRows} onChange={setExtraRows} />
 
           <Button type="submit" disabled={isPending} className="w-full">
             {isPending ? "Submitting..." : "Submit"}

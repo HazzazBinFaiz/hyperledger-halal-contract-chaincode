@@ -29,7 +29,7 @@ export default function AppBreadcrumb() {
 
   const trail = findMenuTrail(pathname)
 
-  if (!trail.section || !trail.item) {
+  if (!trail.section) {
     return (
       <Breadcrumb>
         <BreadcrumbList>
@@ -41,6 +41,24 @@ export default function AppBreadcrumb() {
           <BreadcrumbSeparator />
           <BreadcrumbItem>
             <BreadcrumbPage>{pathname}</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+    )
+  }
+
+  if (!trail.item) {
+    return (
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink asChild>
+              <Link href="/">Dashboard</Link>
+            </BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>{trail.section.title}</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>

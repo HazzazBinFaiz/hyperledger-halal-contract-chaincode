@@ -38,6 +38,26 @@ function countByStatus<T extends { status: string }>(rows: T[]) {
   }, {})
 }
 
+const allBatchStatuses = [
+  "CREATED",
+  "WAITING_FOR_TRANSPORT",
+  "IN_TRANSPORT",
+  "DELIVERED_TO_SLAUGHTERHOUSE",
+  "SLAUGHTERING",
+  "PROCESSED",
+  "REJECTED",
+]
+
+const allUnitStatuses = [
+  "CREATED",
+  "WAITING_FOR_FROZEN_TRANSPORT",
+  "IN_FROZEN_TRANSPORT",
+  "DELIVERED_TO_RETAIL",
+  "ON_SALE",
+  "SOLD",
+  "REJECTED",
+]
+
 export default async function Page() {
   const [batches, units, farms, slaughterHouses, retailShops] = await Promise.all([
     getAllBatches(),
@@ -89,11 +109,8 @@ export default async function Page() {
             <CardTitle>Batch Flow</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            {Object.keys(batchStatusCount).length === 0 ? (
-              <p className="text-muted-foreground">No batch data</p>
-            ) : (
-              Object.entries(batchStatusCount)
-                .sort(([a], [b]) => a.localeCompare(b))
+            {allBatchStatuses
+                .map((status) => [status, batchStatusCount[status] ?? 0] as const)
                 .map(([status, count]) => (
                   <div key={status} className="flex items-center justify-between rounded-md bg-slate-50 px-3 py-2">
                     {batchStatusRoute[status] ? (
@@ -105,8 +122,7 @@ export default async function Page() {
                     )}
                     <span className="font-semibold text-slate-900">{count}</span>
                   </div>
-                ))
-            )}
+                ))}
           </CardContent>
         </Card>
 
@@ -115,11 +131,8 @@ export default async function Page() {
             <CardTitle>Processed Unit Flow</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            {Object.keys(unitStatusCount).length === 0 ? (
-              <p className="text-muted-foreground">No processed unit data</p>
-            ) : (
-              Object.entries(unitStatusCount)
-                .sort(([a], [b]) => a.localeCompare(b))
+            {allUnitStatuses
+                .map((status) => [status, unitStatusCount[status] ?? 0] as const)
                 .map(([status, count]) => (
                   <div key={status} className="flex items-center justify-between rounded-md bg-slate-50 px-3 py-2">
                     {unitStatusRoute[status] ? (
@@ -131,8 +144,7 @@ export default async function Page() {
                     )}
                     <span className="font-semibold text-slate-900">{count}</span>
                   </div>
-                ))
-            )}
+                ))}
           </CardContent>
         </Card>
 
