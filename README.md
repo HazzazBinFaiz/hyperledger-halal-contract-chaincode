@@ -43,10 +43,42 @@ cd ../halal-contract/ui
 npm i
 ```
 
+Set up TimescaleDB in another terminal from the project root:
+
+```
+cd ../halal-contract
+docker compose up -d timescaledb
+./scripts/setup-timescaledb.sh
+```
+
+Set this environment variable before running the UI:
+
+```
+export TIMESCALEDB_URL=postgres://postgres:postgres@localhost:5432/halal_iot
+```
+
 After installing dependencies, run the UI dev server
 ```
 npm run dev
 ```
+
+## IoT Off-Chain Flow (Simple)
+
+The IoT panel now follows this flow:
+
+1. Submit IoT telemetry from UI panel
+2. Store telemetry row in TimescaleDB hypertable `iot_logs`
+3. Compute SHA-256 payload hash
+4. Anchor only the hash in Fabric ledger
+
+No Kafka/queue is used in this implementation.
+
+Chaincode transactions used for hash anchoring:
+
+- `anchorIoTTraceForBatch`
+- `anchorIoTTraceForProcessedBatch`
+
+Trace pages read IoT details from TimescaleDB, while ledger keeps the immutable hash anchor.
 
 ## Invoking the contract from CLI
 

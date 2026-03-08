@@ -2,6 +2,12 @@
 
 import {TextDecoder} from "node:util";
 import {getContract} from "@/lib/gateway";
+import {
+    getIoTLogsByBatchId,
+    getIoTLogsByUnitId,
+    insertIoTLog,
+    type IoTLogRecord
+} from "@/lib/server/timescaledb";
 
 export type PoultryBatch = {
   id: number
@@ -282,6 +288,8 @@ export type PoultryBatchTrace = {
     extra_info: Record<string, string | number | boolean>
 }
 
+export type IoTTraceLog = IoTLogRecord
+
 export async function getTraceOfBatch(batch_id: number): Promise<PoultryBatchTrace[]> {
     const resultBytes = await contract.evaluateTransaction('queryTraceOfBatch', batch_id.toString())
     return JSON.parse(utf8Decoder.decode(resultBytes)) as PoultryBatchTrace[]
@@ -334,13 +342,23 @@ export async function addIoTTraceForBatch(
     temperature: number,
     extra_info: Record<string, string>
 ) {
+    const timescaleLog = await insertIoTLog({
+        batch_id,
+        unit_id: null,
+        longitude,
+        latitude,
+        temperature,
+        extra_info: extra_info ?? {}
+    })
+
     await contract.submitTransaction(
-        'addIoTTraceForBatch',
+        'anchorIoTTraceForBatch',
         batch_id.toString(),
-        longitude.toString(),
-        latitude.toString(),
-        temperature.toString(),
-        JSON.stringify(extra_info)
+        timescaleLog.payload_hash,
+        JSON.stringify({
+            timescaledb_log_id: timescaleLog.id,
+            timescaledb_captured_at: timescaleLog.created_at
+        })
     )
 }
 
@@ -351,12 +369,35 @@ export async function addIoTTraceForProcessedBatch(
     temperature: number,
     extra_info: Record<string, string>
 ) {
+    const unit = await getProcessedBatchById(unit_id)
+    if (!unit) {
+        throw new Error(`Processed unit ${unit_id} not found`)
+    }
+
+    const timescaleLog = await insertIoTLog({
+        batch_id: unit.original_batch_id,
+        unit_id,
+        longitude,
+        latitude,
+        temperature,
+        extra_info: extra_info ?? {}
+    })
+
     await contract.submitTransaction(
-        'addIoTTraceForProcessedBatch',
+        'anchorIoTTraceForProcessedBatch',
         unit_id.toString(),
-        longitude.toString(),
-        latitude.toString(),
-        temperature.toString(),
-        JSON.stringify(extra_info)
+        timescaleLog.payload_hash,
+        JSON.stringify({
+            timescaledb_log_id: timescaleLog.id,
+            timescaledb_captured_at: timescaleLog.created_at
+        })
     )
+}
+
+export async function getIoTLogsForBatch(batch_id: number): Promise<IoTTraceLog[]> {
+    return getIoTLogsByBatchId(batch_id)
+}
+
+export async function getIoTLogsForUnit(unit_id: string): Promise<IoTTraceLog[]> {
+    return getIoTLogsByUnitId(unit_id)
 }

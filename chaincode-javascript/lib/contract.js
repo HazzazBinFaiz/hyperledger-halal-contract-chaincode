@@ -276,6 +276,30 @@ class HalalTraceabilityContract extends Contract {
         );
     }
 
+    async anchorIoTTraceForBatch(ctx, batch_id, payload_hash, extra_info) {
+        const batch = await this.getBatchById(ctx, batch_id);
+        this._assert(batch, 'Batch not found');
+        this._assert(batch.status === BATCH_STATUS.IN_TRANSPORT, 'Batch must be in transport');
+        this._assert(payload_hash && payload_hash.trim().length > 0, 'payload_hash is required');
+
+        const payload = {
+            payload_hash: payload_hash.trim(),
+            storage: 'timescaledb',
+            ...JSON.parse(extra_info || '{}')
+        };
+
+        await this._addTrace(
+            ctx,
+            batch_id,
+            null,
+            0,
+            'BATCH_IOT_HASH_ANCHORED',
+            'IoT telemetry hash anchored for batch transport',
+            TRACE_TAG.IOT,
+            payload
+        );
+    }
+
     async acceptBatchForSlaughtering(ctx, batch_id, slaughter_house_id, acceptance_time, number_of_chicken, extra_info) {
         const batch = await this.getBatchById(ctx, batch_id);
         this._assert(batch.status === BATCH_STATUS.DELIVERED_TO_SLAUGHTERHOUSE, 'Invalid state');
@@ -444,6 +468,30 @@ class HalalTraceabilityContract extends Contract {
             0,
             'UNIT_IOT_CAPTURED',
             'IoT telemetry captured for frozen transport',
+            TRACE_TAG.IOT,
+            payload
+        );
+    }
+
+    async anchorIoTTraceForProcessedBatch(ctx, unit_id, payload_hash, extra_info) {
+        const unit = await this.getProcessedBatchById(ctx, unit_id);
+        this._assert(unit, 'Processed batch not found');
+        this._assert(unit.status === UNIT_STATUS.IN_FROZEN_TRANSPORT, 'Processed batch must be in frozen transport');
+        this._assert(payload_hash && payload_hash.trim().length > 0, 'payload_hash is required');
+
+        const payload = {
+            payload_hash: payload_hash.trim(),
+            storage: 'timescaledb',
+            ...JSON.parse(extra_info || '{}')
+        };
+
+        await this._addTrace(
+            ctx,
+            unit.original_batch_id,
+            unit.unit_id,
+            0,
+            'UNIT_IOT_HASH_ANCHORED',
+            'IoT telemetry hash anchored for frozen transport',
             TRACE_TAG.IOT,
             payload
         );
