@@ -1,0 +1,22 @@
+name: Fabric test-network for halal_contract benchmark
+version: '2.0.0'
+caliper:
+  blockchain: fabric
+
+channels:
+  - channelName: mychannel
+    contracts:
+      - id: halal_contract
+
+organizations:
+  - mspid: Org1MSP
+    identities:
+      certificates:
+        - name: User1
+          clientPrivateKey:
+            path: /home/hazzaz/workspace/hyperledger/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/users/User1@org1.example.com/msp/keystore/6357cfbf94c3f4f91f5bbf35c86d903c2cf9d50d2613627ae99a76398ff637e7_sk
+          clientSignedCert:
+            path: /home/hazzaz/workspace/hyperledger/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/users/User1@org1.example.com/msp/signcerts/cert.pem
+    connectionProfile:
+      path: /home/hazzaz/workspace/hyperledger/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/connection-org1.json
+      discover: true

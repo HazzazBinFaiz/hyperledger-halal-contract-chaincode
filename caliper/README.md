@@ -18,7 +18,16 @@ From this `caliper/` directory:
 
 ```bash
 npm install
-python3 -m pip install -r scripts/requirements.txt
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r scripts/requirements.txt
+```
+
+If you open a new terminal later, activate again before plotting:
+
+```bash
+source .venv/bin/activate
 ```
 
 ## 3. Generate network config
@@ -32,6 +41,9 @@ bash scripts/generate-network-config.sh
 ## 4. Run benchmarks
 
 ```bash
+# Optional but recommended for high-load rounds
+export CALIPER_FABRIC_TIMEOUT_INVOKEORQUERY=300
+
 bash scripts/run-benchmarks.sh
 ```
 
@@ -43,7 +55,8 @@ This generates three report folders:
 ## 5. Generate figures
 
 ```bash
-python3 scripts/plot_figures.py
+source .venv/bin/activate
+python scripts/plot_figures.py
 ```
 
 Generated images:

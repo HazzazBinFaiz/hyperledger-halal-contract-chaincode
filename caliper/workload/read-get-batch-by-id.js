@@ -7,6 +7,7 @@ class ReadGetBatchByIdWorkload extends WorkloadModuleBase {
         super();
         this.readIndex = 0;
         this.batchIds = [];
+        this.errorCount = 0;
     }
 
     async initializeWorkloadModule(workerIndex, totalWorkers, roundIndex, roundArguments, sutAdapter, sutContext) {
@@ -41,12 +42,19 @@ class ReadGetBatchByIdWorkload extends WorkloadModuleBase {
         const index = this.readIndex % this.batchIds.length;
         const batchId = this.batchIds[index];
 
-        await this.sutAdapter.sendRequests({
-            contractId: this.contractId,
-            contractFunction: 'getBatchById',
-            contractArguments: [batchId],
-            readOnly: true
-        });
+        try {
+            await this.sutAdapter.sendRequests({
+                contractId: this.contractId,
+                contractFunction: 'getBatchById',
+                contractArguments: [batchId],
+                readOnly: true
+            });
+        } catch (error) {
+            this.errorCount += 1;
+            if (this.errorCount % 50 === 1) {
+                console.warn(`[read-get-batch-by-id] transient query error count=${this.errorCount}: ${error.message}`);
+            }
+        }
     }
 }
 

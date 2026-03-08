@@ -8,6 +8,9 @@ cd "${CALIPER_DIR}"
 
 ./scripts/generate-network-config.sh
 
+# Avoid premature aborts under high-load rounds on test-network.
+export CALIPER_FABRIC_TIMEOUT_INVOKEORQUERY="${CALIPER_FABRIC_TIMEOUT_INVOKEORQUERY:-300}"
+
 npx caliper bind --caliper-bind-sut fabric:2.5
 
 npx caliper launch manager \

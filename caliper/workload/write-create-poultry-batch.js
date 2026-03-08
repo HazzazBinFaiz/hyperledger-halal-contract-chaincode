@@ -7,6 +7,7 @@ class WriteCreatePoultryBatchWorkload extends WorkloadModuleBase {
         super();
         this.txIndex = 0;
         this.workerPrefix = `w${this.workerIndex || 0}`;
+        this.errorCount = 0;
     }
 
     async initializeWorkloadModule(workerIndex, totalWorkers, roundIndex, roundArguments, sutAdapter, sutContext) {
@@ -37,7 +38,15 @@ class WriteCreatePoultryBatchWorkload extends WorkloadModuleBase {
             readOnly: false
         };
 
-        await this.sutAdapter.sendRequests(request);
+        try {
+            await this.sutAdapter.sendRequests(request);
+        } catch (error) {
+            // Keep saturated rounds running to capture plateau behavior.
+            this.errorCount += 1;
+            if (this.errorCount % 50 === 1) {
+                console.warn(`[write-create-poultry-batch] transient submit error count=${this.errorCount}: ${error.message}`);
+            }
+        }
     }
 }
 

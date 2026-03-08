@@ -7,6 +7,7 @@ class LatencyByFunctionWorkload extends WorkloadModuleBase {
         super();
         this.txIndex = 0;
         this.pool = [];
+        this.errorCount = 0;
     }
 
     async initializeWorkloadModule(workerIndex, totalWorkers, roundIndex, roundArguments, sutAdapter, sutContext) {
@@ -28,7 +29,7 @@ class LatencyByFunctionWorkload extends WorkloadModuleBase {
     }
 
     async invokeCreate(batchId, extra) {
-        await this.sutAdapter.sendRequests({
+        await this._sendRequestSafe({
             contractId: this.contractId,
             contractFunction: 'createPoultryBatch',
             contractArguments: [
@@ -44,6 +45,17 @@ class LatencyByFunctionWorkload extends WorkloadModuleBase {
         });
     }
 
+    async _sendRequestSafe(request) {
+        try {
+            await this.sutAdapter.sendRequests(request);
+        } catch (error) {
+            this.errorCount += 1;
+            if (this.errorCount % 50 === 1) {
+                console.warn(`[latency-by-function] transient error count=${this.errorCount}: ${error.message}`);
+            }
+        }
+    }
+
     async seedDataForTarget() {
         for (let i = 0; i < this.seedCount; i += 1) {
             const batchId = this.makeBatchId(i);
@@ -54,7 +66,7 @@ class LatencyByFunctionWorkload extends WorkloadModuleBase {
                 continue;
             }
 
-            await this.sutAdapter.sendRequests({
+            await this._sendRequestSafe({
                 contractId: this.contractId,
                 contractFunction: 'dispatchBatchToTransport',
                 contractArguments: [
@@ -72,7 +84,7 @@ class LatencyByFunctionWorkload extends WorkloadModuleBase {
                 continue;
             }
 
-            await this.sutAdapter.sendRequests({
+            await this._sendRequestSafe({
                 contractId: this.contractId,
                 contractFunction: 'acceptBatchForTransport',
                 contractArguments: [
@@ -101,7 +113,7 @@ class LatencyByFunctionWorkload extends WorkloadModuleBase {
         }
 
         if (this.targetFunction === 'dispatchBatchToTransport') {
-            await this.sutAdapter.sendRequests({
+            await this._sendRequestSafe({
                 contractId: this.contractId,
                 contractFunction: 'dispatchBatchToTransport',
                 contractArguments: [
@@ -117,7 +129,7 @@ class LatencyByFunctionWorkload extends WorkloadModuleBase {
         }
 
         if (this.targetFunction === 'acceptBatchForTransport') {
-            await this.sutAdapter.sendRequests({
+            await this._sendRequestSafe({
                 contractId: this.contractId,
                 contractFunction: 'acceptBatchForTransport',
                 contractArguments: [
@@ -132,7 +144,7 @@ class LatencyByFunctionWorkload extends WorkloadModuleBase {
         }
 
         if (this.targetFunction === 'deliverBatch') {
-            await this.sutAdapter.sendRequests({
+            await this._sendRequestSafe({
                 contractId: this.contractId,
                 contractFunction: 'deliverBatch',
                 contractArguments: [
@@ -148,7 +160,7 @@ class LatencyByFunctionWorkload extends WorkloadModuleBase {
         }
 
         if (this.targetFunction === 'queryTraceOfBatch') {
-            await this.sutAdapter.sendRequests({
+            await this._sendRequestSafe({
                 contractId: this.contractId,
                 contractFunction: 'queryTraceOfBatch',
                 contractArguments: [batchId],
