@@ -52,7 +52,7 @@ test:
           contractId: halal_contract
           targetFunction: deliverBatch
           seedCount: 600
-    - label: queryTraceOfBatch
+    - label: createProcessedBatch
       txNumber: 200
       rateControl:
         type: fixed-rate
@@ -62,5 +62,5 @@ test:
         module: workload/latency-by-function.js
         arguments:
           contractId: halal_contract
-          targetFunction: queryTraceOfBatch
+          targetFunction: createProcessedBatch
           seedCount: 600

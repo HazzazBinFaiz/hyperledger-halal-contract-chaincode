@@ -153,7 +153,7 @@ def plot_latency(latency_rows, output_file: Path):
         text = f'{value:.0f} ms' if value >= 1 else f'{value:.2f} ms'
         plt.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 3, text, ha='center', va='bottom', fontsize=10)
 
-    plt.title('Average Transaction Latency for Critical Smart Contract Functions', fontsize=14, weight='bold')
+    plt.title('Average Transaction Latency (Non-IoT / Non-TimescaleDB Functions)', fontsize=14, weight='bold')
     plt.ylabel('Average Transaction Latency (ms)', fontsize=12)
     plt.grid(axis='y', linestyle='--', alpha=0.4)
     plt.xticks(rotation=8)

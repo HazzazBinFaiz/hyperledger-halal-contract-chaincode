@@ -96,7 +96,37 @@ class LatencyByFunctionWorkload extends WorkloadModuleBase {
                 readOnly: false
             });
 
-            if (this.targetFunction === 'deliverBatch' || this.targetFunction === 'queryTraceOfBatch') {
+            if (this.targetFunction === 'deliverBatch') {
+                this.pool.push(batchId);
+                continue;
+            }
+
+            await this._sendRequestSafe({
+                contractId: this.contractId,
+                contractFunction: 'deliverBatch',
+                contractArguments: [
+                    batchId,
+                    '1',
+                    new Date().toISOString(),
+                    '100',
+                    '{"seed":"deliver"}'
+                ],
+                readOnly: false
+            });
+
+            if (this.targetFunction === 'createProcessedBatch') {
+                await this._sendRequestSafe({
+                    contractId: this.contractId,
+                    contractFunction: 'acceptBatchForSlaughtering',
+                    contractArguments: [
+                        batchId,
+                        '1',
+                        new Date().toISOString(),
+                        '100',
+                        '{"seed":"slaughter-accept"}'
+                    ],
+                    readOnly: false
+                });
                 this.pool.push(batchId);
             }
         }
@@ -159,12 +189,17 @@ class LatencyByFunctionWorkload extends WorkloadModuleBase {
             return;
         }
 
-        if (this.targetFunction === 'queryTraceOfBatch') {
+        if (this.targetFunction === 'createProcessedBatch') {
             await this._sendRequestSafe({
                 contractId: this.contractId,
-                contractFunction: 'queryTraceOfBatch',
-                contractArguments: [batchId],
-                readOnly: true
+                contractFunction: 'createProcessedBatch',
+                contractArguments: [
+                    batchId,
+                    '4',
+                    new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+                    '{"run":"latency"}'
+                ],
+                readOnly: false
             });
             return;
         }

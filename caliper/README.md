@@ -2,7 +2,7 @@
 
 This folder provides a ready-to-run Caliper benchmark to produce two figures:
 - Throughput vs transaction send rate (write vs read)
-- Average latency by critical smart contract function
+- Average latency by critical smart contract function (non-IoT / non-TimescaleDB path)
 
 ## 1. Prerequisites
 
