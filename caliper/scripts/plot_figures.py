@@ -2,6 +2,7 @@
 import json
 import os
 import re
+import html
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -9,7 +10,15 @@ import matplotlib.pyplot as plt
 
 def _load_json(path: Path):
     with path.open('r', encoding='utf-8') as f:
-        return json.load(f)
+        content = f.read()
+    try:
+        return json.loads(content)
+    except json.JSONDecodeError as exc:
+        if '<!doctype html>' in content.lower():
+            raise ValueError(
+                f'Report is HTML, not JSON: {path}. Re-run benchmark with --caliper-report-format json.'
+            ) from exc
+        raise
 
 
 def _find_rounds(data):
@@ -101,19 +110,69 @@ def _extract_avg_latency(round_data):
 
 
 def _read_report(path: Path):
-    data = _load_json(path)
-    rounds = _find_rounds(data)
+    content = path.read_text(encoding='utf-8')
+
+    try:
+        data = json.loads(content)
+        rounds = _find_rounds(data)
+        parsed = []
+        for r in rounds:
+            label = _extract_label(r)
+            parsed.append(
+                {
+                    'label': label,
+                    'send_rate': _extract_send_rate(label),
+                    'throughput': _extract_throughput(r),
+                    'latency_ms': _extract_avg_latency(r),
+                }
+            )
+        return parsed
+    except json.JSONDecodeError:
+        if '<!doctype html>' not in content.lower():
+            raise
+
+    summary_match = re.search(
+        r'id=\"benchmarksummary\".*?<table.*?>(.*?)</table>',
+        content,
+        flags=re.IGNORECASE | re.DOTALL
+    )
+    table_html = summary_match.group(1) if summary_match else content
+
     parsed = []
-    for r in rounds:
-        label = _extract_label(r)
+    for row_html in re.findall(r'<tr>(.*?)</tr>', table_html, flags=re.IGNORECASE | re.DOTALL):
+        cells = re.findall(r'<t[dh]>(.*?)</t[dh]>', row_html, flags=re.IGNORECASE | re.DOTALL)
+        if len(cells) < 8:
+            continue
+
+        cleaned = []
+        for cell in cells:
+            text = re.sub(r'<.*?>', '', cell, flags=re.DOTALL)
+            cleaned.append(html.unescape(text).strip())
+
+        if cleaned[0].lower() == 'name':
+            continue
+
+        label = cleaned[0]
+        send_rate = _extract_send_rate(label)
+        try:
+            throughput = float(cleaned[7])
+        except ValueError:
+            throughput = 0.0
+
+        try:
+            latency_ms = float(cleaned[6]) * 1000.0 if cleaned[6] != '-' else 0.0
+        except ValueError:
+            latency_ms = 0.0
+
         parsed.append(
             {
                 'label': label,
-                'send_rate': _extract_send_rate(label),
-                'throughput': _extract_throughput(r),
-                'latency_ms': _extract_avg_latency(r),
+                'send_rate': send_rate,
+                'throughput': throughput,
+                'latency_ms': latency_ms,
             }
         )
+
     return parsed
 
 
@@ -164,9 +223,30 @@ def plot_latency(latency_rows, output_file: Path):
 
 def main():
     base = Path(__file__).resolve().parents[1]
-    write_report = base / 'results' / 'throughput-write-report' / 'report.json'
-    read_report = base / 'results' / 'throughput-read-report' / 'report.json'
-    latency_report = base / 'results' / 'latency-report' / 'report.json'
+    def resolve_report(candidates):
+        for candidate in candidates:
+            if candidate.exists():
+                return candidate
+        return candidates[0]
+
+    write_report = resolve_report([
+        base / 'results' / 'throughput-write-report' / 'report.json',
+        base / 'results' / 'throughput-write-report' / 'report',
+        base / 'results' / 'throughput-write-report' / 'report.txt',
+        base / 'results' / 'throughput-write-report.json'
+    ])
+    read_report = resolve_report([
+        base / 'results' / 'throughput-read-report' / 'report.json',
+        base / 'results' / 'throughput-read-report' / 'report',
+        base / 'results' / 'throughput-read-report' / 'report.txt',
+        base / 'results' / 'throughput-read-report.json'
+    ])
+    latency_report = resolve_report([
+        base / 'results' / 'latency-report' / 'report.json',
+        base / 'results' / 'latency-report' / 'report',
+        base / 'results' / 'latency-report' / 'report.txt',
+        base / 'results' / 'latency-report.json'
+    ])
 
     for report in (write_report, read_report, latency_report):
         if not report.exists():

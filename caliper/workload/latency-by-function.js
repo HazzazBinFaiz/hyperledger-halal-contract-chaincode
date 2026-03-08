@@ -18,7 +18,14 @@ class LatencyByFunctionWorkload extends WorkloadModuleBase {
         this.targetFunction = roundArguments.targetFunction;
         this.seedCount = Number(roundArguments.seedCount || 300);
 
-        if (this.targetFunction !== 'createPoultryBatch') {
+        const noSeedFunctions = new Set([
+            'createFarmer',
+            'createSlaughteringHouse',
+            'createRetailShop',
+            'createPoultryBatch'
+        ]);
+
+        if (!noSeedFunctions.has(this.targetFunction)) {
             await this.seedDataForTarget();
         }
     }
@@ -136,6 +143,54 @@ class LatencyByFunctionWorkload extends WorkloadModuleBase {
         this.txIndex += 1;
         const idx = this.pool.length > 0 ? this.txIndex % this.pool.length : this.txIndex;
         const batchId = this.pool.length > 0 ? this.pool[idx] : this.makeBatchId(this.txIndex);
+
+        if (this.targetFunction === 'createFarmer') {
+            const id = this.makeBatchId(this.txIndex);
+            await this._sendRequestSafe({
+                contractId: this.contractId,
+                contractFunction: 'createFarmer',
+                contractArguments: [
+                    id,
+                    `Farmer ${id}`,
+                    'Dhaka',
+                    '{"run":"latency"}'
+                ],
+                readOnly: false
+            });
+            return;
+        }
+
+        if (this.targetFunction === 'createSlaughteringHouse') {
+            const id = this.makeBatchId(this.txIndex);
+            await this._sendRequestSafe({
+                contractId: this.contractId,
+                contractFunction: 'createSlaughteringHouse',
+                contractArguments: [
+                    id,
+                    `Slaughter ${id}`,
+                    'Gazipur',
+                    '{"run":"latency"}'
+                ],
+                readOnly: false
+            });
+            return;
+        }
+
+        if (this.targetFunction === 'createRetailShop') {
+            const id = this.makeBatchId(this.txIndex);
+            await this._sendRequestSafe({
+                contractId: this.contractId,
+                contractFunction: 'createRetailShop',
+                contractArguments: [
+                    id,
+                    `Retail ${id}`,
+                    'Dhaka',
+                    '{"run":"latency"}'
+                ],
+                readOnly: false
+            });
+            return;
+        }
 
         if (this.targetFunction === 'createPoultryBatch') {
             await this.invokeCreate(batchId, '{"run":"latency"}');

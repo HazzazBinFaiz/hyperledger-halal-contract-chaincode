@@ -3,10 +3,50 @@ test:
   description: Throughput sweep for write transaction createPoultryBatch
   workers:
     type: local
-    number: 4
+    number: 1
   rounds:
+    - label: write-100
+      txDuration: 20
+      rateControl:
+        type: fixed-rate
+        opts:
+          tps: 100
+      workload:
+        module: workload/write-create-poultry-batch.js
+        arguments:
+          contractId: halal_contract
+    - label: write-200
+      txDuration: 20
+      rateControl:
+        type: fixed-rate
+        opts:
+          tps: 200
+      workload:
+        module: workload/write-create-poultry-batch.js
+        arguments:
+          contractId: halal_contract
+    - label: write-300
+      txDuration: 20
+      rateControl:
+        type: fixed-rate
+        opts:
+          tps: 300
+      workload:
+        module: workload/write-create-poultry-batch.js
+        arguments:
+          contractId: halal_contract
+    - label: write-400
+      txDuration: 20
+      rateControl:
+        type: fixed-rate
+        opts:
+          tps: 400
+      workload:
+        module: workload/write-create-poultry-batch.js
+        arguments:
+          contractId: halal_contract
     - label: write-500
-      txDuration: 30
+      txDuration: 20
       rateControl:
         type: fixed-rate
         opts:
@@ -15,72 +55,52 @@ test:
         module: workload/write-create-poultry-batch.js
         arguments:
           contractId: halal_contract
+    - label: write-600
+      txDuration: 20
+      rateControl:
+        type: fixed-rate
+        opts:
+          tps: 600
+      workload:
+        module: workload/write-create-poultry-batch.js
+        arguments:
+          contractId: halal_contract
+    - label: write-700
+      txDuration: 20
+      rateControl:
+        type: fixed-rate
+        opts:
+          tps: 700
+      workload:
+        module: workload/write-create-poultry-batch.js
+        arguments:
+          contractId: halal_contract
+    - label: write-800
+      txDuration: 20
+      rateControl:
+        type: fixed-rate
+        opts:
+          tps: 800
+      workload:
+        module: workload/write-create-poultry-batch.js
+        arguments:
+          contractId: halal_contract
+    - label: write-900
+      txDuration: 20
+      rateControl:
+        type: fixed-rate
+        opts:
+          tps: 900
+      workload:
+        module: workload/write-create-poultry-batch.js
+        arguments:
+          contractId: halal_contract
     - label: write-1000
-      txDuration: 30
+      txDuration: 20
       rateControl:
         type: fixed-rate
         opts:
           tps: 1000
-      workload:
-        module: workload/write-create-poultry-batch.js
-        arguments:
-          contractId: halal_contract
-    - label: write-1500
-      txDuration: 30
-      rateControl:
-        type: fixed-rate
-        opts:
-          tps: 1500
-      workload:
-        module: workload/write-create-poultry-batch.js
-        arguments:
-          contractId: halal_contract
-    - label: write-2000
-      txDuration: 30
-      rateControl:
-        type: fixed-rate
-        opts:
-          tps: 2000
-      workload:
-        module: workload/write-create-poultry-batch.js
-        arguments:
-          contractId: halal_contract
-    - label: write-2500
-      txDuration: 30
-      rateControl:
-        type: fixed-rate
-        opts:
-          tps: 2500
-      workload:
-        module: workload/write-create-poultry-batch.js
-        arguments:
-          contractId: halal_contract
-    - label: write-3000
-      txDuration: 30
-      rateControl:
-        type: fixed-rate
-        opts:
-          tps: 3000
-      workload:
-        module: workload/write-create-poultry-batch.js
-        arguments:
-          contractId: halal_contract
-    - label: write-3500
-      txDuration: 30
-      rateControl:
-        type: fixed-rate
-        opts:
-          tps: 3500
-      workload:
-        module: workload/write-create-poultry-batch.js
-        arguments:
-          contractId: halal_contract
-    - label: write-4000
-      txDuration: 30
-      rateControl:
-        type: fixed-rate
-        opts:
-          tps: 4000
       workload:
         module: workload/write-create-poultry-batch.js
         arguments:

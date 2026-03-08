@@ -2,7 +2,7 @@
 
 This folder provides a ready-to-run Caliper benchmark to produce two figures:
 - Throughput vs transaction send rate (write vs read)
-- Average latency by critical smart contract function (non-IoT / non-TimescaleDB path)
+- Average latency by independent non-IoT functions (`createFarmer`, `createSlaughteringHouse`, `createRetailShop`, `createPoultryBatch`)
 
 ## 1. Prerequisites
 
@@ -73,3 +73,26 @@ Generated images:
 - If your chaincode name or channel differ, update:
   - `config/networkConfig.template.yaml`
   - benchmark `contractId` arguments
+- Write benchmarks on the default 2-org test-network require endorsements from both orgs.
+  If `peer0.org2.example.com:9051` becomes unavailable under load, either:
+  - keep conservative TPS (the default configs here are tuned for this), or
+  - redeploy with a benchmark-only endorsement policy:
+    `./network.sh deployCC -ccn halal_contract -ccp ../halal-contract/chaincode-javascript -ccl javascript -ccep \"OR('Org1MSP.peer')\"`
+
+## Optional: Redeploy with OR Endorsement (Either Org Can Endorse)
+
+From `fabric-samples/test-network`:
+
+```bash
+./network.sh deployCC \
+  -ccn halal_contract \
+  -ccp ../halal-contract/chaincode-javascript \
+  -ccl javascript \
+  -ccep "OR('Org1MSP.peer','Org2MSP.peer')"
+```
+
+Verify committed definition:
+
+```bash
+peer lifecycle chaincode querycommitted --channelID mychannel --name halal_contract
+```
