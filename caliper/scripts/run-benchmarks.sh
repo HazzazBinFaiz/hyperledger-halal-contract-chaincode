@@ -14,6 +14,7 @@ export CALIPER_FABRIC_TIMEOUT_INVOKEORQUERY="${CALIPER_FABRIC_TIMEOUT_INVOKEORQU
 mkdir -p results/throughput-write-report results/throughput-read-report results/latency-report
 
 npx caliper bind --caliper-bind-sut fabric:2.5
+bash ./scripts/patch-caliper-latency-ms.sh
 
 npx caliper launch manager \
   --caliper-workspace . \

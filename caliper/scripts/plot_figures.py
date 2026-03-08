@@ -230,18 +230,24 @@ def main():
         return candidates[0]
 
     write_report = resolve_report([
+        base / 'results' / 'highload-throughput-write' / 'report.json',
+        base / 'results' / 'highload-throughput-write' / 'report',
         base / 'results' / 'throughput-write-report' / 'report.json',
         base / 'results' / 'throughput-write-report' / 'report',
         base / 'results' / 'throughput-write-report' / 'report.txt',
         base / 'results' / 'throughput-write-report.json'
     ])
     read_report = resolve_report([
+        base / 'results' / 'highload-throughput-read' / 'report.json',
+        base / 'results' / 'highload-throughput-read' / 'report',
         base / 'results' / 'throughput-read-report' / 'report.json',
         base / 'results' / 'throughput-read-report' / 'report',
         base / 'results' / 'throughput-read-report' / 'report.txt',
         base / 'results' / 'throughput-read-report.json'
     ])
     latency_report = resolve_report([
+        base / 'results' / 'highload-latency-report' / 'report.json',
+        base / 'results' / 'highload-latency-report' / 'report',
         base / 'results' / 'latency-report' / 'report.json',
         base / 'results' / 'latency-report' / 'report',
         base / 'results' / 'latency-report' / 'report.txt',

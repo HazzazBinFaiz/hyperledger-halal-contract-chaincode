@@ -1,63 +1,63 @@
 test:
-  name: latency-critical-functions
-  description: Average latency comparison for independent create functions
+  name: latency-highload-functions
+  description: High-load latency comparison for independent functions
   workers:
     type: local
     number: 4
   rounds:
     - label: createFarmer
-      txNumber: 200
+      txNumber: 500
       rateControl:
         type: fixed-rate
         opts:
-          tps: 200
+          tps: 500
       workload:
         module: workload/latency-by-function.js
         arguments:
           contractId: halal_contract
           targetFunction: createFarmer
     - label: createSlaughteringHouse
-      txNumber: 200
+      txNumber: 500
       rateControl:
         type: fixed-rate
         opts:
-          tps: 200
+          tps: 500
       workload:
         module: workload/latency-by-function.js
         arguments:
           contractId: halal_contract
           targetFunction: createSlaughteringHouse
     - label: createRetailShop
-      txNumber: 200
+      txNumber: 500
       rateControl:
         type: fixed-rate
         opts:
-          tps: 200
+          tps: 500
       workload:
         module: workload/latency-by-function.js
         arguments:
           contractId: halal_contract
           targetFunction: createRetailShop
     - label: createPoultryBatch
-      txNumber: 200
+      txNumber: 500
       rateControl:
         type: fixed-rate
         opts:
-          tps: 200
+          tps: 500
       workload:
         module: workload/latency-by-function.js
         arguments:
           contractId: halal_contract
           targetFunction: createPoultryBatch
     - label: queryTraceOfBatch
-      txNumber: 200
+      txNumber: 500
       rateControl:
         type: fixed-rate
         opts:
-          tps: 200
+          tps: 500
       workload:
         module: workload/latency-by-function.js
         arguments:
           contractId: halal_contract
           targetFunction: queryTraceOfBatch
-          seedCount: 300
+          seedCount: 800

@@ -3,7 +3,7 @@ test:
   description: Throughput sweep for write transaction createPoultryBatch
   workers:
     type: local
-    number: 1
+    number: 4
   rounds:
     - label: write-100
       txDuration: 20

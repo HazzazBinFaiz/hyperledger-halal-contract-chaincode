@@ -47,10 +47,28 @@ export CALIPER_FABRIC_TIMEOUT_INVOKEORQUERY=300
 bash scripts/run-benchmarks.sh
 ```
 
+`run-benchmarks.sh` automatically applies a local Caliper patch so latency columns are reported in `ms` instead of `s` (portable across devices after `npm install`).
+
 This generates three report folders:
 - `results/throughput-write-report/`
 - `results/throughput-read-report/`
 - `results/latency-report/`
+
+### Optional High-Load Throughput Sweep (500 to 5000 TPS, step 500)
+
+```bash
+bash scripts/run-benchmarks-500-step.sh
+```
+
+This script uses dedicated static configs:
+- `config/bench-throughput-write-500-step.yaml`
+- `config/bench-throughput-read-500-step.yaml`
+- `config/bench-latency-highload.yaml`
+
+This generates:
+- `results/highload-throughput-write/report`
+- `results/highload-throughput-read/report`
+- `results/highload-latency-report/report`
 
 ## 5. Generate figures
 

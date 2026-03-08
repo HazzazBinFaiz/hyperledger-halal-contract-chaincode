@@ -1,54 +1,10 @@
 test:
-  name: throughput-read-get-batch-by-id
-  description: Throughput sweep for read transaction getBatchById
+  name: throughput-read-500-step
+  description: Throughput sweep for read transaction getBatchById (500 step)
   workers:
     type: local
     number: 4
   rounds:
-    - label: read-100
-      txDuration: 20
-      rateControl:
-        type: fixed-rate
-        opts:
-          tps: 100
-      workload:
-        module: workload/read-get-batch-by-id.js
-        arguments:
-          contractId: halal_contract
-          seedCount: 0
-    - label: read-200
-      txDuration: 20
-      rateControl:
-        type: fixed-rate
-        opts:
-          tps: 200
-      workload:
-        module: workload/read-get-batch-by-id.js
-        arguments:
-          contractId: halal_contract
-          seedCount: 0
-    - label: read-300
-      txDuration: 20
-      rateControl:
-        type: fixed-rate
-        opts:
-          tps: 300
-      workload:
-        module: workload/read-get-batch-by-id.js
-        arguments:
-          contractId: halal_contract
-          seedCount: 0
-    - label: read-400
-      txDuration: 20
-      rateControl:
-        type: fixed-rate
-        opts:
-          tps: 400
-      workload:
-        module: workload/read-get-batch-by-id.js
-        arguments:
-          contractId: halal_contract
-          seedCount: 0
     - label: read-500
       txDuration: 20
       rateControl:
@@ -60,56 +16,100 @@ test:
         arguments:
           contractId: halal_contract
           seedCount: 0
-    - label: read-600
-      txDuration: 20
-      rateControl:
-        type: fixed-rate
-        opts:
-          tps: 600
-      workload:
-        module: workload/read-get-batch-by-id.js
-        arguments:
-          contractId: halal_contract
-          seedCount: 0
-    - label: read-700
-      txDuration: 20
-      rateControl:
-        type: fixed-rate
-        opts:
-          tps: 700
-      workload:
-        module: workload/read-get-batch-by-id.js
-        arguments:
-          contractId: halal_contract
-          seedCount: 0
-    - label: read-800
-      txDuration: 20
-      rateControl:
-        type: fixed-rate
-        opts:
-          tps: 800
-      workload:
-        module: workload/read-get-batch-by-id.js
-        arguments:
-          contractId: halal_contract
-          seedCount: 0
-    - label: read-900
-      txDuration: 20
-      rateControl:
-        type: fixed-rate
-        opts:
-          tps: 900
-      workload:
-        module: workload/read-get-batch-by-id.js
-        arguments:
-          contractId: halal_contract
-          seedCount: 0
     - label: read-1000
       txDuration: 20
       rateControl:
         type: fixed-rate
         opts:
           tps: 1000
+      workload:
+        module: workload/read-get-batch-by-id.js
+        arguments:
+          contractId: halal_contract
+          seedCount: 0
+    - label: read-1500
+      txDuration: 20
+      rateControl:
+        type: fixed-rate
+        opts:
+          tps: 1500
+      workload:
+        module: workload/read-get-batch-by-id.js
+        arguments:
+          contractId: halal_contract
+          seedCount: 0
+    - label: read-2000
+      txDuration: 20
+      rateControl:
+        type: fixed-rate
+        opts:
+          tps: 2000
+      workload:
+        module: workload/read-get-batch-by-id.js
+        arguments:
+          contractId: halal_contract
+          seedCount: 0
+    - label: read-2500
+      txDuration: 20
+      rateControl:
+        type: fixed-rate
+        opts:
+          tps: 2500
+      workload:
+        module: workload/read-get-batch-by-id.js
+        arguments:
+          contractId: halal_contract
+          seedCount: 0
+    - label: read-3000
+      txDuration: 20
+      rateControl:
+        type: fixed-rate
+        opts:
+          tps: 3000
+      workload:
+        module: workload/read-get-batch-by-id.js
+        arguments:
+          contractId: halal_contract
+          seedCount: 0
+    - label: read-3500
+      txDuration: 20
+      rateControl:
+        type: fixed-rate
+        opts:
+          tps: 3500
+      workload:
+        module: workload/read-get-batch-by-id.js
+        arguments:
+          contractId: halal_contract
+          seedCount: 0
+    - label: read-4000
+      txDuration: 20
+      rateControl:
+        type: fixed-rate
+        opts:
+          tps: 4000
+      workload:
+        module: workload/read-get-batch-by-id.js
+        arguments:
+          contractId: halal_contract
+          seedCount: 0
+    - label: read-4500
+      txDuration: 20
+      rateControl:
+        type: fixed-rate
+        opts:
+          tps: 4500
+      workload:
+        module: workload/read-get-batch-by-id.js
+        arguments:
+          contractId: halal_contract
+          seedCount: 0
+    - label: read-5000
+      txDuration: 20
+      rateControl:
+        type: fixed-rate
+        opts:
+          tps: 5000
       workload:
         module: workload/read-get-batch-by-id.js
         arguments:

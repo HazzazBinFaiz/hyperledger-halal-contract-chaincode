@@ -68,6 +68,11 @@ class LatencyByFunctionWorkload extends WorkloadModuleBase {
             const batchId = this.makeBatchId(i);
             await this.invokeCreate(batchId, '{"seed":"create"}');
 
+            if (this.targetFunction === 'queryTraceOfBatch') {
+                this.pool.push(batchId);
+                continue;
+            }
+
             if (this.targetFunction === 'dispatchBatchToTransport') {
                 this.pool.push(batchId);
                 continue;
@@ -255,6 +260,16 @@ class LatencyByFunctionWorkload extends WorkloadModuleBase {
                     '{"run":"latency"}'
                 ],
                 readOnly: false
+            });
+            return;
+        }
+
+        if (this.targetFunction === 'queryTraceOfBatch') {
+            await this._sendRequestSafe({
+                contractId: this.contractId,
+                contractFunction: 'queryTraceOfBatch',
+                contractArguments: [batchId],
+                readOnly: true
             });
             return;
         }
