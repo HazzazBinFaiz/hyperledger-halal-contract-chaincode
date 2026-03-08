@@ -6,10 +6,12 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
+import ProcessedBatchExpiryNotifier from "@/components/processed-batch-expiry-notifier"
 
 export default function Layout({ children } : { children: React.ReactNode}) {
   return (
     <SidebarProvider>
+      <ProcessedBatchExpiryNotifier />
       <AppSidebar />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2 border-b">

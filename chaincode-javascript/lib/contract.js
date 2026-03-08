@@ -89,6 +89,12 @@ class HalalTraceabilityContract extends Contract {
         if (!condition) throw new Error(message);
     }
 
+    _safeDate(value) {
+        const parsed = new Date(value);
+        if (Number.isNaN(parsed.getTime())) return null;
+        return parsed;
+    }
+
     async createFarmer(ctx, id, name, address, extra_info) {
         const key = ctx.stub.createCompositeKey('Farmer', [id.toString()]);
         const exists = await ctx.stub.getState(key);
@@ -290,12 +296,16 @@ class HalalTraceabilityContract extends Contract {
         );
     }
 
-    async createProcessedBatch(ctx, batch_id, number_of_split_batches, extra_info) {
+    async createProcessedBatch(ctx, batch_id, number_of_split_batches, expiration_date, extra_info) {
         const batch = await this.getBatchById(ctx, batch_id);
         this._assert(batch.status === BATCH_STATUS.SLAUGHTERING, 'Invalid state');
 
         const count = +number_of_split_batches;
         this._assert(count > 0, 'Invalid split count');
+        const expiresAt = this._safeDate(expiration_date);
+        this._assert(expiresAt, 'Invalid expiration date');
+        const now = new Date(ctx.stub.getDateTimestamp().toISOString());
+        this._assert(expiresAt.getTime() > now.getTime(), 'Expiration date must be in the future');
 
         const units = [];
 
@@ -307,6 +317,7 @@ class HalalTraceabilityContract extends Contract {
                 unit_id: unitId,
                 status: UNIT_STATUS.CREATED,
                 created_at: ctx.stub.getDateTimestamp().toISOString(),
+                expiration_date: expiresAt.toISOString(),
                 weight: 0,
                 extra_info: JSON.parse(extra_info || '{}')
             };
@@ -331,6 +342,39 @@ class HalalTraceabilityContract extends Contract {
         );
 
         return units;
+    }
+
+    async getNotifiableProcessedBatches(ctx, warn_me_before_minutes) {
+        const warnMinutes = parseInt(warn_me_before_minutes, 10);
+        this._assert(Number.isInteger(warnMinutes) && warnMinutes > 0, 'Invalid warn window');
+
+        const now = new Date(ctx.stub.getDateTimestamp().toISOString());
+        const warnMs = warnMinutes * 60 * 1000;
+        const all = await this.getAllProcessedBatches(ctx);
+
+        return all
+            .filter((unit) => {
+                if (!unit) return false;
+                if (unit.status !== UNIT_STATUS.DELIVERED_TO_RETAIL && unit.status !== UNIT_STATUS.ON_SALE) {
+                    return false;
+                }
+
+                const expiresAt = this._safeDate(unit.expiration_date);
+                if (!expiresAt) return false;
+                if (expiresAt.getTime() <= now.getTime()) return false;
+
+                const notifyAt = new Date(expiresAt.getTime() - warnMs);
+                return now.getTime() >= notifyAt.getTime();
+            })
+            .map((unit) => {
+                const expiresAt = new Date(unit.expiration_date);
+                const notifyAt = new Date(expiresAt.getTime() - warnMs);
+
+                return {
+                    ...unit,
+                    notify_at: notifyAt.toISOString()
+                };
+            });
     }
 
     async getProcessedBatchById(ctx, unit_id) {

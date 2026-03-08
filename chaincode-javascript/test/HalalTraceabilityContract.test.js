@@ -157,7 +157,7 @@ describe('HalalTraceabilityContract', () => {
         await contract.addIoTTraceForBatch(ctx, 100, '90.41', '23.81', '4.2', '{"sensor":"s1"}');
         await contract.deliverBatch(ctx, 100, 9, '2026-01-01T13:00:00Z', 499, '{}');
         await contract.acceptBatchForSlaughtering(ctx, 100, '9', '2026-01-01T14:00:00Z', 499, '{}');
-        const units = await contract.createProcessedBatch(ctx, 100, 2, '{"lot":"L1"}');
+        const units = await contract.createProcessedBatch(ctx, 100, 2, '2026-01-02T00:00:00Z', '{"lot":"L1"}');
 
         expect(units).to.have.length(2);
         expect(units[0].unit_id).to.equal('100:1');
@@ -322,7 +322,7 @@ describe('HalalTraceabilityContract', () => {
             extra_info: {}
         });
 
-        await expect(contract.createProcessedBatch(ctx, 403, 1, '{}')).to.be.rejectedWith('Invalid state');
+        await expect(contract.createProcessedBatch(ctx, 403, 1, '2026-01-02T00:00:00Z', '{}')).to.be.rejectedWith('Invalid state');
 
         await seedEntity(ctx, 'Batch', 404, {
             id: 404,
@@ -338,7 +338,7 @@ describe('HalalTraceabilityContract', () => {
             extra_info: {}
         });
 
-        await expect(contract.createProcessedBatch(ctx, 404, 0, '{}')).to.be.rejectedWith('Invalid split count');
+        await expect(contract.createProcessedBatch(ctx, 404, 0, '2026-01-02T00:00:00Z', '{}')).to.be.rejectedWith('Invalid split count');
 
         await expect(contract.dispatchProcessedBatchToFrozenTransport(ctx, '900:1', 't', 1, '{}'))
             .to.be.rejectedWith('Processed batch not found');
@@ -416,7 +416,7 @@ describe('HalalTraceabilityContract', () => {
         await contract.addIoTTraceForBatch(ctx, 910, '1.1', '2.2', '3.3');
         await contract.deliverBatch(ctx, 910, 9, 't3', 99);
         await contract.acceptBatchForSlaughtering(ctx, 910, '9', 't4', 99);
-        await contract.createProcessedBatch(ctx, 910, 1);
+        await contract.createProcessedBatch(ctx, 910, 1, '2026-01-03T00:00:00Z');
 
         await contract.dispatchProcessedBatchToFrozenTransport(ctx, '910:1', 't5', 5);
         await contract.acceptProcessedBatchForFrozenTransport(ctx, '910:1', 't6');
@@ -456,5 +456,64 @@ describe('HalalTraceabilityContract', () => {
         const fallback = await contract._collectPaginated(iterator);
         expect(fallback.bookmark).to.equal('');
         expect(fallback.fetched_records_count).to.equal(0);
+    });
+
+    it('validates expiration date when splitting processed batch', async () => {
+        await seedEntity(ctx, 'Batch', 1100, {
+            id: 1100,
+            farm_id: 1,
+            slaughter_house_id: 10,
+            status: 'SLAUGHTERING',
+            created_at: '2026-01-01T00:00:00Z',
+            number_of_chicken: 0,
+            age_of_chicken: 1,
+            breed_type: 'X',
+            ideal_temperature: 1,
+            number_of_processed_units: 0,
+            extra_info: {}
+        });
+
+        await expect(contract.createProcessedBatch(ctx, 1100, 1, 'invalid-date', '{}'))
+            .to.be.rejectedWith('Invalid expiration date');
+
+        await expect(contract.createProcessedBatch(ctx, 1100, 1, '2025-01-01T00:00:00Z', '{}'))
+            .to.be.rejectedWith('Expiration date must be in the future');
+    });
+
+    it('returns only notifiable processed batches near expiry window', async () => {
+        await seedEntity(ctx, 'ProcessedBatch', '1200:1', {
+            original_batch_id: 1200,
+            unit_id: '1200:1',
+            status: 'DELIVERED_TO_RETAIL',
+            created_at: '2026-01-01T00:00:00Z',
+            expiration_date: '2026-01-01T12:00:00Z',
+            weight: 0,
+            extra_info: {}
+        });
+
+        await seedEntity(ctx, 'ProcessedBatch', '1200:2', {
+            original_batch_id: 1200,
+            unit_id: '1200:2',
+            status: 'ON_SALE',
+            created_at: '2026-01-01T00:00:00Z',
+            expiration_date: '2026-01-02T12:00:00Z',
+            weight: 0,
+            extra_info: {}
+        });
+
+        await seedEntity(ctx, 'ProcessedBatch', '1200:3', {
+            original_batch_id: 1200,
+            unit_id: '1200:3',
+            status: 'SOLD',
+            created_at: '2026-01-01T00:00:00Z',
+            expiration_date: '2026-01-01T08:00:00Z',
+            weight: 0,
+            extra_info: {}
+        });
+
+        const notifiable = await contract.getNotifiableProcessedBatches(ctx, 720); // 12 hours
+        expect(notifiable).to.have.length(1);
+        expect(notifiable[0].unit_id).to.equal('1200:1');
+        expect(notifiable[0]).to.have.property('notify_at');
     });
 });

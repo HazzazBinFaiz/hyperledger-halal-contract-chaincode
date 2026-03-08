@@ -13,6 +13,7 @@ export default function ProcessPageClient({ batches }: { batches: PoultryBatch[]
 
     const handleSubmit = async (data: {
         number_of_split_batches: number
+        expiration_date: string
         extra_info: Record<string, string>
     }) => {
         if (!selected.length) {
@@ -24,6 +25,7 @@ export default function ProcessPageClient({ batches }: { batches: PoultryBatch[]
             await createProcessedBatch(
                 batch,
                 data.number_of_split_batches,
+                data.expiration_date,
                 data.extra_info
             )
         }
@@ -41,6 +43,7 @@ export default function ProcessPageClient({ batches }: { batches: PoultryBatch[]
                 title="Process Batch"
                 fields={[
                     { name: "number_of_split_batches", label: "Split Count", type: "number" },
+                    { name: "expiration_date", label: "Expiration Date", type: "datetime-local" },
                     { name: "extra_info", label: "Additional Info",
                         extraInfoConfig: {
                             allowImageAdd: true,

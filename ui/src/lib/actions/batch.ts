@@ -22,6 +22,8 @@ export type ProcessedBatch = {
     unit_id: string
     status: string
     created_at: string
+    expiration_date?: string
+    notify_at?: string
     weight: number
     retail_shop_id?: number
     extra_info: Record<string, string>
@@ -141,14 +143,24 @@ export async function acceptBatchForSlaughtering(
 export async function createProcessedBatch(
     batch_id: number,
     number_of_split_batches: number,
+    expiration_date: string,
     extra_info: Record<string, string>
 ) {
     await contract.submitTransaction(
         'createProcessedBatch',
         batch_id.toString(),
         number_of_split_batches.toString(),
+        expiration_date,
         JSON.stringify(extra_info)
     )
+}
+
+export async function getNotifiableProcessedBatches(warnMinutes: number): Promise<ProcessedBatch[]> {
+    const resultBytes = await contract.evaluateTransaction(
+        'getNotifiableProcessedBatches',
+        warnMinutes.toString()
+    )
+    return JSON.parse(utf8Decoder.decode(resultBytes)) as ProcessedBatch[]
 }
 
 export async function getProcessedBatchById(unit_id: string): Promise<ProcessedBatch | null> {
