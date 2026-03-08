@@ -1,0 +1,32 @@
+name: Fabric test-network for halal_contract benchmark
+version: '2.0.0'
+caliper:
+  blockchain: fabric
+
+channels:
+  mychannel:
+    created: true
+    contracts:
+      - id: halal_contract
+
+organizations:
+  Org1:
+    mspid: Org1MSP
+    identities:
+      certificates:
+        - name: User1
+          clientPrivateKey:
+            path: REPLACE_ORG1_KEY_PATH
+          clientSignedCert:
+            path: ../../test-network/organizations/peerOrganizations/org1.example.com/users/User1@org1.example.com/msp/signcerts/cert.pem
+    connectionProfile:
+      path: ../../test-network/organizations/peerOrganizations/org1.example.com/connection-org1.json
+      discover: true
+
+clients:
+  client0:
+    org: Org1
+    credentialStore:
+      path: ./tmp/credentialStore
+      cryptoStore:
+        path: ./tmp/cryptoStore

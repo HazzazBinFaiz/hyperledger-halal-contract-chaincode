@@ -1,0 +1,15 @@
+{
+  "name": "halal-contract-caliper",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Caliper benchmarks for halal_contract chaincode",
+  "scripts": {
+    "bench": "bash scripts/run-benchmarks.sh",
+    "plot": "python3 scripts/plot_figures.py"
+  },
+  "devDependencies": {
+    "@hyperledger/caliper-cli": "0.6.0",
+    "@hyperledger/caliper-core": "0.6.0",
+    "@hyperledger/caliper-fabric": "0.6.0"
+  }
+}

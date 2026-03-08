@@ -1,0 +1,168 @@
+'use strict';
+
+const { WorkloadModuleBase } = require('@hyperledger/caliper-core');
+
+class LatencyByFunctionWorkload extends WorkloadModuleBase {
+    constructor() {
+        super();
+        this.txIndex = 0;
+        this.pool = [];
+    }
+
+    async initializeWorkloadModule(workerIndex, totalWorkers, roundIndex, roundArguments, sutAdapter, sutContext) {
+        await super.initializeWorkloadModule(workerIndex, totalWorkers, roundIndex, roundArguments, sutAdapter, sutContext);
+
+        this.workerIndex = workerIndex;
+        this.contractId = roundArguments.contractId || 'halal_contract';
+        this.targetFunction = roundArguments.targetFunction;
+        this.seedCount = Number(roundArguments.seedCount || 300);
+
+        if (this.targetFunction !== 'createPoultryBatch') {
+            await this.seedDataForTarget();
+        }
+    }
+
+    makeBatchId(seedIndex) {
+        const raw = `${Date.now()}${this.workerIndex}${this.roundIndex}${seedIndex}`;
+        return raw.slice(-18);
+    }
+
+    async invokeCreate(batchId, extra) {
+        await this.sutAdapter.sendRequests({
+            contractId: this.contractId,
+            contractFunction: 'createPoultryBatch',
+            contractArguments: [
+                batchId,
+                '1',
+                new Date().toISOString(),
+                '45',
+                'Broiler',
+                '4',
+                extra || '{"seed":true}'
+            ],
+            readOnly: false
+        });
+    }
+
+    async seedDataForTarget() {
+        for (let i = 0; i < this.seedCount; i += 1) {
+            const batchId = this.makeBatchId(i);
+            await this.invokeCreate(batchId, '{"seed":"create"}');
+
+            if (this.targetFunction === 'dispatchBatchToTransport') {
+                this.pool.push(batchId);
+                continue;
+            }
+
+            await this.sutAdapter.sendRequests({
+                contractId: this.contractId,
+                contractFunction: 'dispatchBatchToTransport',
+                contractArguments: [
+                    batchId,
+                    new Date().toISOString(),
+                    '100',
+                    '8',
+                    '{"seed":"dispatch"}'
+                ],
+                readOnly: false
+            });
+
+            if (this.targetFunction === 'acceptBatchForTransport') {
+                this.pool.push(batchId);
+                continue;
+            }
+
+            await this.sutAdapter.sendRequests({
+                contractId: this.contractId,
+                contractFunction: 'acceptBatchForTransport',
+                contractArguments: [
+                    batchId,
+                    new Date().toISOString(),
+                    '100',
+                    '{"seed":"accept"}'
+                ],
+                readOnly: false
+            });
+
+            if (this.targetFunction === 'deliverBatch' || this.targetFunction === 'queryTraceOfBatch') {
+                this.pool.push(batchId);
+            }
+        }
+    }
+
+    async submitTransaction() {
+        this.txIndex += 1;
+        const idx = this.pool.length > 0 ? this.txIndex % this.pool.length : this.txIndex;
+        const batchId = this.pool.length > 0 ? this.pool[idx] : this.makeBatchId(this.txIndex);
+
+        if (this.targetFunction === 'createPoultryBatch') {
+            await this.invokeCreate(batchId, '{"run":"latency"}');
+            return;
+        }
+
+        if (this.targetFunction === 'dispatchBatchToTransport') {
+            await this.sutAdapter.sendRequests({
+                contractId: this.contractId,
+                contractFunction: 'dispatchBatchToTransport',
+                contractArguments: [
+                    batchId,
+                    new Date().toISOString(),
+                    '100',
+                    '8',
+                    '{"run":"latency"}'
+                ],
+                readOnly: false
+            });
+            return;
+        }
+
+        if (this.targetFunction === 'acceptBatchForTransport') {
+            await this.sutAdapter.sendRequests({
+                contractId: this.contractId,
+                contractFunction: 'acceptBatchForTransport',
+                contractArguments: [
+                    batchId,
+                    new Date().toISOString(),
+                    '100',
+                    '{"run":"latency"}'
+                ],
+                readOnly: false
+            });
+            return;
+        }
+
+        if (this.targetFunction === 'deliverBatch') {
+            await this.sutAdapter.sendRequests({
+                contractId: this.contractId,
+                contractFunction: 'deliverBatch',
+                contractArguments: [
+                    batchId,
+                    '1',
+                    new Date().toISOString(),
+                    '100',
+                    '{"run":"latency"}'
+                ],
+                readOnly: false
+            });
+            return;
+        }
+
+        if (this.targetFunction === 'queryTraceOfBatch') {
+            await this.sutAdapter.sendRequests({
+                contractId: this.contractId,
+                contractFunction: 'queryTraceOfBatch',
+                contractArguments: [batchId],
+                readOnly: true
+            });
+            return;
+        }
+
+        throw new Error(`Unsupported targetFunction: ${this.targetFunction}`);
+    }
+}
+
+function createWorkloadModule() {
+    return new LatencyByFunctionWorkload();
+}
+
+module.exports.createWorkloadModule = createWorkloadModule;
