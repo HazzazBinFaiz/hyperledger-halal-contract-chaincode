@@ -11,6 +11,7 @@ export type NavSection = {
 
 export const navMain: NavSection[] = [
   { title: "Dashboard", url: "/" },
+  { title: "Notifications", url: "/notifications" },
   {
     title: "Organizations",
     url: "#",

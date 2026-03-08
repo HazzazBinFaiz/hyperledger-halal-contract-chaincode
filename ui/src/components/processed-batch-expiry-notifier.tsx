@@ -1,55 +1,18 @@
 "use client"
 
 import { useEffect } from "react"
+import {
+  NotifiableUnit,
+  readNotifiedIdsFromStorage,
+  readPendingNotificationsFromStorage,
+  writeNotifiedIdsToStorage,
+  writePendingNotificationsToStorage,
+} from "@/lib/processed-batch-notification-storage"
 
-type NotifiableUnit = {
-  unit_id: string
-  status: string
-  expiration_date?: string
-}
-
-const PENDING_NOTIFICATIONS_KEY = "processed_batch_notifications_v2"
-const NOTIFIED_IDS_KEY = "processed_batch_notified_ids_v1"
 const POLL_INTERVAL_MS = 60 * 1000
 
 function isBrowserNotificationSupported() {
   return typeof window !== "undefined" && "Notification" in window
-}
-
-function readPendingNotifications(): Record<string, NotifiableUnit> {
-  if (typeof window === "undefined") return {}
-  try {
-    const raw = window.localStorage.getItem(PENDING_NOTIFICATIONS_KEY)
-    if (!raw) return {}
-    const parsed = JSON.parse(raw) as Record<string, NotifiableUnit>
-    if (parsed && typeof parsed === "object") return parsed
-    return {}
-  } catch {
-    return {}
-  }
-}
-
-function writePendingNotifications(records: Record<string, NotifiableUnit>) {
-  if (typeof window === "undefined") return
-  window.localStorage.setItem(PENDING_NOTIFICATIONS_KEY, JSON.stringify(records))
-}
-
-function readNotifiedIds(): Set<string> {
-  if (typeof window === "undefined") return new Set()
-  try {
-    const raw = window.localStorage.getItem(NOTIFIED_IDS_KEY)
-    if (!raw) return new Set()
-    const parsed = JSON.parse(raw) as string[]
-    if (!Array.isArray(parsed)) return new Set()
-    return new Set(parsed.map((id) => String(id)))
-  } catch {
-    return new Set()
-  }
-}
-
-function writeNotifiedIds(notifiedIds: Set<string>) {
-  if (typeof window === "undefined") return
-  window.localStorage.setItem(NOTIFIED_IDS_KEY, JSON.stringify(Array.from(notifiedIds)))
 }
 
 async function ensureNotificationPermission() {
@@ -89,8 +52,8 @@ export default function ProcessedBatchExpiryNotifier() {
 
         const payload = (await response.json()) as { units?: NotifiableUnit[] }
         const units = Array.isArray(payload.units) ? payload.units : []
-        const pendingNotifications = readPendingNotifications()
-        const notifiedIds = readNotifiedIds()
+        const pendingNotifications = readPendingNotificationsFromStorage()
+        const notifiedIds = readNotifiedIdsFromStorage()
         let pendingChanged = false
         let notifiedIdsChanged = false
 
@@ -129,11 +92,11 @@ export default function ProcessedBatchExpiryNotifier() {
         }
 
         if (pendingChanged) {
-          writePendingNotifications(pendingNotifications)
+          writePendingNotificationsToStorage(pendingNotifications)
         }
 
         if (notifiedIdsChanged) {
-          writeNotifiedIds(notifiedIds)
+          writeNotifiedIdsToStorage(notifiedIds)
         }
       } catch {
         // Silently ignore poll errors to avoid interrupting UI.
