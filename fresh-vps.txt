@@ -1,0 +1,61 @@
+sudo apt update
+sudo apt upgrade -y
+sudo apt remove $(dpkg --get-selections docker.io docker-compose docker-compose-v2 docker-doc podman-docker containerd runc | cut -f1)
+# Add Docker's official GPG key:
+sudo apt update
+sudo apt install ca-certificates curl git jq
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+
+# Add the repository to Apt sources:
+sudo tee /etc/apt/sources.list.d/docker.sources <<EOF
+Types: deb
+URIs: https://download.docker.com/linux/ubuntu
+Suites: $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}")
+Components: stable
+Signed-By: /etc/apt/keyrings/docker.asc
+EOF
+sudo apt update
+sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo systemctl enable docker.service
+sudo systemctl enable containerd.service
+sudo groupadd docker
+sudo usermod -aG docker $USER
+# log out ang login again
+
+
+curl -sSLO https://raw.githubusercontent.com/hyperledger/fabric/main/scripts/install-fabric.sh && chmod +x install-fabric.sh
+./install-fabric.sh docker samples binary
+
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.4/install.sh | bash
+
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+
+nvm install 20.19.3
+
+sudo apt install -y python3.12-venv
+
+cd fabric-samples/
+
+git clone https://github.com/HazzazBinFaiz/hyperledger-halal-contract-chaincode.git halal-contract
+cd test-network
+./network.sh up createChannel -ca
+docker pull hyperledger/fabric-nodeenv:2.5
+./network.sh deployCC -ccn halal_contract -ccp ../halal-contract/chaincode-javascript/ -ccl javascript
+
+cd ../halal-contract/caliper
+
+npm install
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -r scripts/requirements.txt
+bash scripts/generate-network-config.sh
+export CALIPER_FABRIC_TIMEOUT_INVOKEORQUERY=600
+bash scripts/run-benchmarks.sh
+python3 scripts/plot_figures.py
+tar -cvf results.tar results
+

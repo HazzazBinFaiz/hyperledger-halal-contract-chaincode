@@ -14,7 +14,7 @@ organizations:
       certificates:
         - name: User1
           clientPrivateKey:
-            path: /home/hazzaz/workspace/hyperledger/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/users/User1@org1.example.com/msp/keystore/62d770bcbfd63d36802a3fe926164144a28ddffd9a52ab60da3ca81b8745ae00_sk
+            path: /home/hazzaz/workspace/hyperledger/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/users/User1@org1.example.com/msp/keystore/580af9fadabc13a85197ddd5295213c75f25ff37e5fdc509cfc43e537f9e7dbf_sk
           clientSignedCert:
             path: /home/hazzaz/workspace/hyperledger/fabric-samples/test-network/organizations/peerOrganizations/org1.example.com/users/User1@org1.example.com/msp/signcerts/cert.pem
     connectionProfile:
